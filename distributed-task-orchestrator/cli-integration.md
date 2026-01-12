@@ -1,124 +1,89 @@
-# Claude CLI Deep Integration Guide
+# Claude CLI Integration Guide
 
 ## Overview
 
-This guide provides detailed instructions on launching sub-agents through Claude CLI to execute tasks, enabling true distributed task processing.
+This guide covers launching real sub-agents via Claude CLI for true parallel task execution.
 
-## Claude CLI Basics
-
-### Installation Verification
+## Prerequisites
 
 ```powershell
-# Check if Claude CLI is available
+# Verify Claude CLI is installed
 claude --version
 
-# If not installed, install via npm
-npm install -g @anthropic-ai/claude-cli
+# If not available, refer to Anthropic documentation for installation
 ```
 
-### Basic Command Format
+## CLI Quick Reference
 
-```bash
-claude [options] [prompt]
-```
-
-### Common Parameters
-
-| Parameter | Short | Description | Example |
-|-----------|-------|-------------|---------|
-| `--prompt` | `-p` | Pass prompt text directly | `claude -p "Task"` |
-| `--output-format` | | Output format (text/json) | `--output-format json` |
-| `--continue` | `-c` | Continue previous conversation | `claude -c -p "Continue"` |
-| `--print` | | Print only, no interactive mode | `claude --print -p "Q"` |
-| `--verbose` | `-v` | Verbose output | `claude -v` |
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--print` | Output only, no interactive mode | `claude --print "task"` |
+| `-p` | Shorthand for prompt | `claude -p "task"` |
+| `--output-format` | Output format (text/json) | `--output-format json` |
+| `-c, --continue` | Continue previous conversation | `claude -c -p "more"` |
 
 ---
 
 ## Single Agent Execution
 
-### Method 1: Direct Execution
+### Direct Prompt
 
 ```powershell
 # Simple task
-claude -p "Analyze the complexity of this code: function add(a,b) { return a+b; }"
+claude --print "Analyze complexity: function add(a,b) { return a+b; }"
 
-# Task with context
-$context = Get-Content "context.md" -Raw
-claude -p "Complete task based on: $context"
+# With file content
+$code = Get-Content "src/App.tsx" -Raw
+claude --print "Review this code: $code"
 ```
 
-### Method 2: Read Task from File
+### From Task File
 
 ```powershell
-# Read and execute task file
 $task = Get-Content ".orchestrator/agent_tasks/agent-01.md" -Raw
-claude -p $task
-
-# Save result
-claude -p $task | Out-File ".orchestrator/results/agent-01-result.md" -Encoding UTF8
-```
-
-### Method 3: Using Pipes
-
-```powershell
-# Pipe input
-Get-Content "task.md" | claude -p -
-
-# Chain processing
-Get-Content "data.json" | claude -p "Analyze this JSON" | Out-File "analysis.md"
+$result = claude --print $task
+$result | Out-File ".orchestrator/results/agent-01-result.md" -Encoding UTF8
 ```
 
 ---
 
 ## Parallel Execution
 
-### Windows PowerShell Jobs
+### Method 1: PowerShell Jobs
 
 ```powershell
-# Launch multiple Agents in parallel
-$taskFiles = Get-ChildItem ".orchestrator/agent_tasks/*.md"
+$taskDir = ".orchestrator/agent_tasks"
+$resultDir = ".orchestrator/results"
 
-$jobs = foreach ($file in $taskFiles) {
-    $agentId = $file.BaseName
-    
-    Start-Job -Name $agentId -ScriptBlock {
-        param($taskPath, $resultPath)
-        
-        $task = Get-Content $taskPath -Raw
-        $result = claude -p $task 2>&1
-        $result | Out-File $resultPath -Encoding UTF8
-        
-        return @{
-            Agent = $using:agentId
-            Success = $LASTEXITCODE -eq 0
-            Output = $result
-        }
-    } -ArgumentList $file.FullName, ".orchestrator/results/$agentId-result.md"
+$jobs = Get-ChildItem "$taskDir/*.md" | ForEach-Object {
+    $name = $_.BaseName
+    Start-Job -Name $name -ScriptBlock {
+        param($path, $out)
+        $task = Get-Content $path -Raw
+        $result = claude --print $task 2>&1
+        $result | Out-File $out -Encoding UTF8
+        return @{ Agent = $using:name; Success = $? }
+    } -ArgumentList $_.FullName, "$resultDir/$name-result.md"
 }
 
-# Display real-time progress
-while ($jobs | Where-Object { $_.State -eq 'Running' }) {
-    $running = ($jobs | Where-Object { $_.State -eq 'Running' }).Count
-    $completed = ($jobs | Where-Object { $_.State -eq 'Completed' }).Count
-    Write-Progress -Activity "Executing" -Status "$completed/$($jobs.Count)" -PercentComplete (($completed/$jobs.Count)*100)
+# Wait with progress
+while ($running = ($jobs | Where-Object State -eq 'Running')) {
+    $done = $jobs.Count - $running.Count
+    Write-Progress -Activity "Executing" -Status "$done/$($jobs.Count)" -PercentComplete (($done / $jobs.Count) * 100)
     Start-Sleep -Seconds 1
 }
 
 # Collect results
-$results = $jobs | Wait-Job | Receive-Job
-
-$results | ForEach-Object {
-    if ($_.Success) {
-        Write-Host "✅ $($_.Agent) completed" -ForegroundColor Green
-    } else {
-        Write-Host "❌ $($_.Agent) failed" -ForegroundColor Red
-    }
+$jobs | ForEach-Object {
+    $result = Receive-Job $_
+    $icon = if ($result.Success) { "✅" } else { "❌" }
+    Write-Host "$icon $($_.Name)"
 }
 
 $jobs | Remove-Job
 ```
 
-### Runspace Pool (High Performance)
+### Method 2: Runspace Pool (Higher Performance)
 
 ```powershell
 function Invoke-ParallelAgents {
@@ -131,82 +96,63 @@ function Invoke-ParallelAgents {
     $pool = [RunspaceFactory]::CreateRunspacePool(1, $MaxConcurrency)
     $pool.Open()
     
-    $tasks = Get-ChildItem "$TaskDir/*.md"
     $runspaces = @()
     
-    foreach ($task in $tasks) {
+    foreach ($file in Get-ChildItem "$TaskDir/*.md") {
         $ps = [PowerShell]::Create()
         $ps.RunspacePool = $pool
         
         [void]$ps.AddScript({
-            param($taskPath, $resultPath)
-            
-            $startTime = Get-Date
-            $task = Get-Content $taskPath -Raw
-            
-            try {
-                $result = claude -p $task 2>&1
-                $endTime = Get-Date
-                
-                @"
-# Agent Execution Result
-
-## Execution Info
-- Status: ✅ Success
-- Start: $startTime
-- End: $endTime  
-- Duration: $(($endTime - $startTime).TotalSeconds)s
-
-## Output
-$result
-"@ | Out-File $resultPath -Encoding UTF8
-                
-                return @{ Success = $true; Duration = ($endTime - $startTime).TotalSeconds }
-            }
-            catch {
-                return @{ Success = $false; Error = $_.Exception.Message }
-            }
-        })
+            param($path, $out)
+            $task = Get-Content $path -Raw
+            $result = claude --print $task
+            $result | Out-File $out -Encoding UTF8
+            return @{ Success = $LASTEXITCODE -eq 0 }
+        }).AddParameter("path", $file.FullName).AddParameter("out", "$ResultDir/$($file.BaseName)-result.md")
         
-        [void]$ps.AddParameter("taskPath", $task.FullName)
-        [void]$ps.AddParameter("resultPath", "$ResultDir/$($task.BaseName)-result.md")
-        
-        $runspaces += [PSCustomObject]@{
-            PowerShell = $ps
+        $runspaces += @{
+            PS = $ps
             Handle = $ps.BeginInvoke()
-            Task = $task.BaseName
+            Name = $file.BaseName
         }
     }
     
-    # Wait and collect
-    $results = @()
+    # Collect results
     foreach ($rs in $runspaces) {
-        $result = $rs.PowerShell.EndInvoke($rs.Handle)
-        $result | Add-Member -NotePropertyName "Agent" -NotePropertyValue $rs.Task
-        $results += $result
-        $rs.PowerShell.Dispose()
+        $result = $rs.PS.EndInvoke($rs.Handle)
+        Write-Host "$(if ($result.Success) {'✅'} else {'❌'}) $($rs.Name)"
+        $rs.PS.Dispose()
     }
     
     $pool.Close()
     $pool.Dispose()
-    
-    return $results
 }
 
 # Usage
-$results = Invoke-ParallelAgents -MaxConcurrency 6
-$results | Format-Table Agent, Success, Duration
+Invoke-ParallelAgents -MaxConcurrency 6
+```
+
+### Method 3: Bash with GNU Parallel
+
+```bash
+# Install: apt-get install parallel (or brew install parallel)
+
+# Execute all tasks in parallel (max 4 at a time)
+parallel -j4 'claude --print "$(cat {})" > .orchestrator/results/{/.}-result.md' ::: .orchestrator/agent_tasks/*.md
+
+# With progress bar
+parallel --bar -j4 'claude --print "$(cat {})" > .orchestrator/results/{/.}-result.md' ::: .orchestrator/agent_tasks/*.md
 ```
 
 ---
 
-## Advanced Integration Patterns
+## Dependency-Aware Execution
 
-### 1. Dependency-Aware Scheduling
+### Topological Scheduling
 
 ```powershell
-# Define task dependencies
-$taskGraph = @{
+# Define task graph
+$graph = @{
     "T-01" = @{ Agent = "Agent-01"; Deps = @() }
     "T-02" = @{ Agent = "Agent-02"; Deps = @("T-01") }
     "T-03" = @{ Agent = "Agent-03"; Deps = @("T-01") }
@@ -217,46 +163,29 @@ $completed = @{}
 $taskDir = ".orchestrator/agent_tasks"
 $resultDir = ".orchestrator/results"
 
-function Get-ReadyTasks {
-    param($graph, $completed)
-    
-    $ready = @()
-    foreach ($taskId in $graph.Keys) {
-        if (-not $completed.ContainsKey($taskId)) {
-            $deps = $graph[$taskId].Deps
-            $allDepsComplete = $true
-            foreach ($dep in $deps) {
-                if (-not $completed.ContainsKey($dep)) {
-                    $allDepsComplete = $false
-                    break
-                }
-            }
-            if ($allDepsComplete) {
-                $ready += $taskId
-            }
-        }
+function Get-ReadyTasks($graph, $completed) {
+    $graph.Keys | Where-Object {
+        -not $completed.ContainsKey($_) -and
+        ($graph[$_].Deps | Where-Object { -not $completed.ContainsKey($_) }).Count -eq 0
     }
-    return $ready
 }
 
-# Execute with topological ordering
-while ($completed.Count -lt $taskGraph.Count) {
-    $readyTasks = Get-ReadyTasks -graph $taskGraph -completed $completed
+# Execute in batches
+while ($completed.Count -lt $graph.Count) {
+    $ready = Get-ReadyTasks $graph $completed
     
-    if ($readyTasks.Count -eq 0) {
-        Write-Error "Circular dependency detected!"
+    if (-not $ready) {
+        Write-Error "Circular dependency detected"
         break
     }
     
-    Write-Host "═══ Batch: $($readyTasks -join ', ') ═══" -ForegroundColor Cyan
+    Write-Host "═══ Batch: $($ready -join ', ') ═══" -ForegroundColor Cyan
     
-    $jobs = foreach ($taskId in $readyTasks) {
-        $agent = $taskGraph[$taskId].Agent
+    $jobs = foreach ($taskId in $ready) {
+        $agent = $graph[$taskId].Agent
         Start-Job -Name $taskId -ScriptBlock {
-            param($agentFile, $resultFile)
-            $task = Get-Content $agentFile -Raw
-            claude -p $task | Out-File $resultFile -Encoding UTF8
-            return $true
+            param($path, $out)
+            claude --print (Get-Content $path -Raw) | Out-File $out -Encoding UTF8
         } -ArgumentList "$taskDir/$agent.md", "$resultDir/$agent-result.md"
     }
     
@@ -264,7 +193,7 @@ while ($completed.Count -lt $taskGraph.Count) {
     
     foreach ($job in $jobs) {
         $completed[$job.Name] = $true
-        Write-Host "  ✅ $($job.Name) completed" -ForegroundColor Green
+        Write-Host "  ✅ $($job.Name)" -ForegroundColor Green
     }
     
     $jobs | Remove-Job
@@ -273,192 +202,48 @@ while ($completed.Count -lt $taskGraph.Count) {
 Write-Host "All tasks completed!" -ForegroundColor Green
 ```
 
-### 2. Timeout and Retry
+---
+
+## Error Handling
+
+### Retry with Backoff
 
 ```powershell
-function Invoke-AgentWithRetry {
+function Invoke-WithRetry {
     param(
         [string]$TaskFile,
         [string]$ResultFile,
-        [int]$TimeoutSeconds = 300,
-        [int]$MaxRetries = 3
+        [int]$MaxRetries = 3,
+        [int]$TimeoutSec = 300
     )
     
-    $retryCount = 0
-    
-    while ($retryCount -lt $MaxRetries) {
+    for ($i = 1; $i -le $MaxRetries; $i++) {
         $job = Start-Job -ScriptBlock {
-            param($taskPath)
-            $task = Get-Content $taskPath -Raw
-            claude -p $task
+            param($path)
+            claude --print (Get-Content $path -Raw)
         } -ArgumentList $TaskFile
         
-        $completed = Wait-Job $job -Timeout $TimeoutSeconds
+        $completed = Wait-Job $job -Timeout $TimeoutSec
         
-        if ($completed) {
+        if ($completed -and $job.State -eq 'Completed') {
             $result = Receive-Job $job
             Remove-Job $job
-            
-            if ($LASTEXITCODE -eq 0) {
-                $result | Out-File $ResultFile -Encoding UTF8
-                return @{ Success = $true; Retries = $retryCount }
-            }
-        }
-        else {
-            Stop-Job $job
-            Remove-Job $job
-            Write-Warning "Timeout, retry ($($retryCount + 1)/$MaxRetries)"
+            $result | Out-File $ResultFile -Encoding UTF8
+            return @{ Success = $true; Retries = $i - 1 }
         }
         
-        $retryCount++
-        Start-Sleep -Seconds (5 * $retryCount)  # Exponential backoff
+        Stop-Job $job -ErrorAction SilentlyContinue
+        Remove-Job $job
+        
+        Write-Warning "Attempt $i/$MaxRetries failed, retrying..."
+        Start-Sleep -Seconds (5 * $i)  # Exponential backoff
     }
     
-    return @{ Success = $false; Retries = $retryCount }
+    return @{ Success = $false; Retries = $MaxRetries }
 }
 ```
 
-### 3. Streaming Output
-
-```powershell
-function Invoke-AgentStreaming {
-    param([string]$TaskFile)
-    
-    $task = Get-Content $TaskFile -Raw
-    $process = Start-Process claude -ArgumentList "-p `"$task`"" -NoNewWindow -PassThru -RedirectStandardOutput "temp_output.txt"
-    
-    $reader = New-Object System.IO.StreamReader("temp_output.txt")
-    while (-not $process.HasExited) {
-        while (-not $reader.EndOfStream) {
-            Write-Host $reader.ReadLine()
-        }
-        Start-Sleep -Milliseconds 100
-    }
-    
-    while (-not $reader.EndOfStream) {
-        Write-Host $reader.ReadLine()
-    }
-    
-    $reader.Close()
-    Remove-Item "temp_output.txt"
-}
-```
-
----
-
-## Context Passing
-
-### Method 1: Inline Context
-
-```powershell
-$context = @"
-## Project Background
-React project with TypeScript.
-
-## Coding Standards
-- ESLint enabled
-- Strict mode
-
-## Task
-Analyze code quality of src/App.tsx
-"@
-
-claude -p $context
-```
-
-### Method 2: Reference Files
-
-```powershell
-$context = @(
-    (Get-Content "project-info.md" -Raw),
-    (Get-Content "coding-standards.md" -Raw),
-    (Get-Content ".orchestrator/agent_tasks/agent-01.md" -Raw)
-) -join "`n`n---`n`n"
-
-claude -p $context
-```
-
-### Method 3: Inject Previous Results
-
-```powershell
-# Agent-02 depends on Agent-01's result
-$agent01Result = Get-Content ".orchestrator/results/agent-01-result.md" -Raw
-$agent02Task = Get-Content ".orchestrator/agent_tasks/agent-02.md" -Raw
-
-$fullPrompt = @"
-## Previous Result (Agent-01)
-
-$agent01Result
-
----
-
-## Current Task
-
-$agent02Task
-"@
-
-claude -p $fullPrompt | Out-File ".orchestrator/results/agent-02-result.md"
-```
-
----
-
-## Result Aggregation
-
-### Intelligent Merge
-
-```powershell
-function Merge-AgentResults {
-    param(
-        [string]$ResultDir = ".orchestrator/results",
-        [string]$OutputFile = ".orchestrator/final_output.md"
-    )
-    
-    $results = Get-ChildItem "$ResultDir/*-result.md" | ForEach-Object {
-        @{
-            Agent = $_.BaseName -replace '-result$', ''
-            Content = Get-Content $_.FullName -Raw
-        }
-    }
-    
-    $mergePrompt = @"
-You are a result aggregation expert. Integrate the following subtask results into a complete report.
-
-Requirements:
-1. Preserve all key information
-2. Organize logically
-3. Eliminate duplicates
-4. Generate executive summary
-5. List key findings
-
----
-
-"@
-    
-    foreach ($result in $results) {
-        $mergePrompt += @"
-
-## $($result.Agent) Result
-
-$($result.Content)
-
----
-
-"@
-    }
-    
-    $finalReport = claude -p $mergePrompt
-    $finalReport | Out-File $OutputFile -Encoding UTF8
-    
-    Write-Host "✅ Report generated: $OutputFile" -ForegroundColor Green
-    return $OutputFile
-}
-```
-
----
-
-## Error Handling Best Practices
-
-### 1. Capture and Log Errors
+### Safe Execution Wrapper
 
 ```powershell
 function Invoke-AgentSafe {
@@ -466,92 +251,139 @@ function Invoke-AgentSafe {
         [string]$Agent,
         [string]$TaskFile,
         [string]$ResultFile,
-        [string]$ErrorLog = ".orchestrator/error.log"
+        [string]$ErrorLog = ".orchestrator/errors.log"
     )
     
     try {
         $task = Get-Content $TaskFile -Raw
-        $result = claude -p $task 2>&1
+        $result = claude --print $task 2>&1
         
         if ($LASTEXITCODE -ne 0) {
-            throw "Claude CLI error code: $LASTEXITCODE"
+            throw "CLI exit code: $LASTEXITCODE"
         }
         
         $result | Out-File $ResultFile -Encoding UTF8
         return @{ Success = $true }
     }
     catch {
-        $errorEntry = @"
-[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Agent failed
-Error: $($_.Exception.Message)
-Task: $TaskFile
-
-"@
-        Add-Content $ErrorLog $errorEntry
+        $entry = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Agent failed: $($_.Exception.Message)"
+        Add-Content $ErrorLog $entry
         return @{ Success = $false; Error = $_.Exception.Message }
-    }
-}
-```
-
-### 2. Graceful Degradation
-
-```powershell
-function Invoke-AgentWithFallback {
-    param([string]$TaskFile)
-    
-    $cliAvailable = Get-Command claude -ErrorAction SilentlyContinue
-    
-    if ($cliAvailable) {
-        $task = Get-Content $TaskFile -Raw
-        return claude -p $task
-    }
-    else {
-        Write-Warning "Claude CLI unavailable, using simulation mode"
-        return "[Simulated] Task received, CLI unavailable"
     }
 }
 ```
 
 ---
 
-## Complete Example: Code Review Workflow
+## Context Passing
+
+### Inline Context
 
 ```powershell
-# Complete distributed code review
+$context = @"
+## Project Info
+- Language: TypeScript
+- Framework: React
 
+## Task
+Analyze src/App.tsx for performance issues.
+"@
+
+claude --print $context
+```
+
+### Inject Previous Results
+
+```powershell
+# Agent-02 needs Agent-01's output
+$prev = Get-Content ".orchestrator/results/agent-01-result.md" -Raw
+$task = Get-Content ".orchestrator/agent_tasks/agent-02.md" -Raw
+
+$prompt = @"
+## Previous Agent Output
+$prev
+
+---
+
+## Your Task
+$task
+"@
+
+claude --print $prompt | Out-File ".orchestrator/results/agent-02-result.md"
+```
+
+---
+
+## Result Aggregation
+
+### AI-Powered Merge
+
+```powershell
+function Merge-Results {
+    param(
+        [string]$ResultDir = ".orchestrator/results",
+        [string]$OutputFile = ".orchestrator/final_output.md"
+    )
+    
+    $results = Get-ChildItem "$ResultDir/*-result.md" | ForEach-Object {
+        "## $($_.BaseName)`n`n$(Get-Content $_ -Raw)"
+    }
+    
+    $prompt = @"
+Merge these sub-agent results into a coherent report:
+
+$($results -join "`n---`n")
+
+Requirements:
+1. Create executive summary
+2. Eliminate duplicates
+3. Organize logically
+4. List key findings
+"@
+    
+    claude --print $prompt | Out-File $OutputFile -Encoding UTF8
+    Write-Host "Report saved: $OutputFile" -ForegroundColor Green
+}
+```
+
+---
+
+## Complete Example: Code Review
+
+```powershell
 # 1. Initialize
-$orchestratorDir = ".orchestrator"
-New-Item -ItemType Directory -Path "$orchestratorDir/agent_tasks" -Force | Out-Null
-New-Item -ItemType Directory -Path "$orchestratorDir/results" -Force | Out-Null
+$dir = ".orchestrator"
+New-Item -ItemType Directory -Path "$dir/agent_tasks", "$dir/results" -Force | Out-Null
 
-# 2. Create task files
-$tasks = @{
-    "agent-01" = "Read all TypeScript files in src/, list filenames and line counts"
-    "agent-02" = "Check TypeScript type errors and any type usage"
-    "agent-03" = "Scan for security vulnerabilities and sensitive info"
-    "agent-04" = "Analyze code complexity and duplication"
+# 2. Create tasks
+@{
+    "agent-01" = "List all TypeScript files in src/ with line counts"
+    "agent-02" = "Find 'any' type usage and type safety issues"
+    "agent-03" = "Check for security issues (hardcoded secrets, injection risks)"
+    "agent-04" = "Analyze React performance (missing useMemo, useCallback)"
+} | ForEach-Object {
+    $_.GetEnumerator() | ForEach-Object {
+        $_.Value | Out-File "$dir/agent_tasks/$($_.Key).md" -Encoding UTF8
+    }
 }
 
-foreach ($agent in $tasks.Keys) {
-    $tasks[$agent] | Out-File "$orchestratorDir/agent_tasks/$agent.md" -Encoding UTF8
-}
+# 3. Execute in parallel
+Write-Host "🚀 Starting code review..." -ForegroundColor Cyan
 
-# 3. Parallel execution
-Write-Host "🚀 Starting distributed code review..." -ForegroundColor Cyan
-
-$jobs = foreach ($agent in $tasks.Keys) {
-    Start-Job -Name $agent -ScriptBlock {
-        param($taskPath, $resultPath)
-        $task = Get-Content $taskPath -Raw
-        claude -p $task | Out-File $resultPath -Encoding UTF8
-    } -ArgumentList "$orchestratorDir/agent_tasks/$agent.md", "$orchestratorDir/results/$agent-result.md"
+$jobs = Get-ChildItem "$dir/agent_tasks/*.md" | ForEach-Object {
+    $name = $_.BaseName
+    Start-Job -Name $name -ScriptBlock {
+        param($path, $out)
+        claude --print (Get-Content $path -Raw) | Out-File $out -Encoding UTF8
+    } -ArgumentList $_.FullName, "$dir/results/$name-result.md"
 }
 
 $jobs | Wait-Job | Out-Null
-Write-Host "✅ All reviews completed" -ForegroundColor Green
+$jobs | ForEach-Object { Write-Host "✅ $($_.Name)" -ForegroundColor Green }
+$jobs | Remove-Job
 
-# 4. Aggregate results
-Merge-AgentResults
+# 4. Aggregate
+Merge-Results
 
-Write-Host "📋 Report: $orchestratorDir/final_output.md" -ForegroundColor Yellow
+Write-Host "📋 Report: $dir/final_output.md" -ForegroundColor Yellow
 ```

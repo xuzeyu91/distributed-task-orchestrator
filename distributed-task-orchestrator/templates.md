@@ -1,250 +1,240 @@
-# Templates: Distributed Task Orchestration Template Collection
+# Templates: Ready-to-Use Templates
 
-## 1. Master Plan Template (master_plan.md)
+## 1. Master Plan Template
+
+**File:** `.orchestrator/master_plan.md`
 
 ```markdown
-# 🎯 Distributed Task Plan
+# Task Plan
 
-## Original Request
-> [User's original request content]
+## Request
+> [User's original request]
 
-## Goal Definition
-**Primary Goal**: [One sentence describing the final result]
-**Success Criteria**: [How to determine task completion]
+## Goal
+**Objective:** [One sentence describing end result]
+**Success Criteria:** [How to verify completion]
 
 ---
 
-## 📋 Task Decomposition
+## Tasks
+
+| ID | Name | Description | Deps | Priority | Status |
+|----|------|-------------|------|----------|--------|
+| T-01 | [Name] | [Brief desc] | None | P0 | 🟡 |
+| T-02 | [Name] | [Brief desc] | T-01 | P1 | ⏸️ |
+| T-03 | [Name] | [Brief desc] | T-01 | P1 | ⏸️ |
+| T-04 | [Name] | [Brief desc] | T-02,T-03 | P2 | ⏸️ |
 
 ### Dependency Graph
 ```
-[ASCII diagram showing task dependencies]
+[T-01] ──┬──→ [T-02] ──┬──→ [T-04]
+         └──→ [T-03] ──┘
 ```
-
-### Task List
-
-| Task ID | Task Name | Description | Dependencies | Priority | Est. Time |
-|---------|-----------|-------------|--------------|----------|-----------|
-| T-01 | [Name] | [Brief description] | None | P0 | 1min |
-| T-02 | [Name] | [Brief description] | T-01 | P1 | 2min |
-| T-03 | [Name] | [Brief description] | T-01 | P1 | 3min |
-| T-04 | [Name] | [Brief description] | T-02,T-03 | P2 | 2min |
 
 ---
 
-## 🤖 Agent Assignment
+## Agents
 
-| Task ID | Agent | Status | Start Time | End Time | Retries |
-|---------|-------|--------|------------|----------|---------|
+| Task | Agent | Status | Start | End | Retries |
+|------|-------|--------|-------|-----|---------|
 | T-01 | Agent-01 | 🟡 Pending | - | - | 0 |
-| T-02 | Agent-02 | 🟡 Pending | - | - | 0 |
-| T-03 | Agent-03 | 🟡 Pending | - | - | 0 |
+| T-02 | Agent-02 | ⏸️ Waiting | - | - | 0 |
+| T-03 | Agent-03 | ⏸️ Waiting | - | - | 0 |
 | T-04 | Agent-04 | ⏸️ Waiting | - | - | 0 |
 
 ### Status Legend
-- 🟡 Pending - Awaiting execution
-- 🔵 Running - Currently executing
-- ✅ Completed - Execution successful
-- ❌ Failed - Execution failed
-- ⏸️ Waiting - Dependencies not satisfied
-- 🔄 Retrying - Retrying after failure
+- 🟡 Pending - Ready to execute
+- 🔵 Running - In progress
+- ✅ Completed - Success
+- ❌ Failed - Error occurred
+- ⏸️ Waiting - Dependencies not met
+- 🔄 Retrying - Retry in progress
 
 ---
 
-## 📊 Execution Progress
+## Progress
 
-### Current Batch: #0
-**Status**: Initializing
-
-### Completion Statistics
-- Total tasks: 4
-- Completed: 0
-- In progress: 0
-- Waiting: 4
-- Failed: 0
+**Current Batch:** #0
+**Completed:** 0/4
+**In Progress:** 0
+**Failed:** 0
 
 ---
 
-## 📝 Execution Log
+## Log
 
-### [YYYY-MM-DD HH:MM:SS] Initialization
-- Task plan created
-- Assigned N Agents
-
----
-
-## ⚠️ Error Log
-
-| Time | Agent | Task ID | Error Type | Description | Resolution |
-|------|-------|---------|------------|-------------|------------|
-| - | - | - | - | - | - |
+### [YYYY-MM-DD HH:MM:SS] Initialized
+- Created task plan with 4 tasks
 
 ---
 
-## 📦 Final Output
+## Errors
 
-**Output Location**: `.orchestrator/final_output.md`
-**Status**: Pending generation
+| Time | Agent | Error | Action |
+|------|-------|-------|--------|
+| - | - | - | - |
+
+---
+
+## Output
+
+**Location:** `.orchestrator/final_output.md`
+**Status:** Pending
 ```
 
 ---
 
-## 2. Agent Task Template (agent-XX.md)
+## 2. Agent Task Template
+
+**File:** `.orchestrator/agent_tasks/agent-XX.md`
 
 ```markdown
-# 🤖 Agent-XX Task Assignment
+# Agent-XX: [Task Name]
 
-## Task Information
-- **Task ID**: T-XX
-- **Task Name**: [Task name]
-- **Priority**: P1
-- **Estimated Time**: 3 minutes
-
----
-
-## 📥 Input
-
-### Parameter List
-| Parameter | Type | Source | Value/Description |
-|-----------|------|--------|-------------------|
-| param1 | string | User input | [Value] |
-| param2 | file | T-01 output | .orchestrator/results/agent-01-result.md |
-
-### Context Information
-[Background information helpful for task completion]
+## Task Info
+- **ID:** T-XX
+- **Priority:** P1
+- **Est. Time:** 2 min
 
 ---
 
-## 🎯 Task Description
+## Input
 
-[Detailed description of task to complete]
+| Parameter | Type | Source | Value |
+|-----------|------|--------|-------|
+| files | list | User | src/*.ts |
+| config | file | T-01 output | .orchestrator/results/agent-01-result.md |
 
-### Specific Steps
+---
+
+## Instructions
+
+[Detailed task description]
+
+### Steps
 1. [Step 1]
 2. [Step 2]
 3. [Step 3]
 
 ---
 
-## 📤 Expected Output
+## Expected Output
 
-### Output Format
-[Describe expected format: text/JSON/Markdown etc.]
+**Format:** Markdown / JSON / Plain text
 
-### Output Example
+**Example:**
+```json
+{
+  "items": [...],
+  "summary": "..."
+}
 ```
-[Example of output format]
-```
 
-### Output Location
-`.orchestrator/results/agent-XX-result.md`
+**Save to:** `.orchestrator/results/agent-XX-result.md`
 
 ---
 
-## ⚠️ Constraints
-
-- [Constraint 1: e.g., cannot modify original files]
-- [Constraint 2: e.g., must use specific format]
-- [Constraint 3: e.g., time limit]
+## Constraints
+- [Constraint 1]
+- [Constraint 2]
 
 ---
 
-## 💡 Execution Hints
-
-[Hints or suggestions to help Agent complete the task]
+## Hints
+- [Helpful tip for task completion]
 ```
 
 ---
 
-## 3. Agent Result Template (agent-XX-result.md)
+## 3. Agent Result Template
+
+**File:** `.orchestrator/results/agent-XX-result.md`
 
 ```markdown
-# 📤 Agent-XX Execution Result
+# Agent-XX Result
 
-## Execution Summary
-- **Task ID**: T-XX
-- **Status**: ✅ Success / ❌ Failed
-- **Start Time**: YYYY-MM-DD HH:MM:SS
-- **End Time**: YYYY-MM-DD HH:MM:SS
-- **Duration**: X.Xs
-
----
-
-## 📋 Execution Process
-
-### Step 1: [Step name]
-- Action: [Action performed]
-- Result: [Action result]
-
-### Step 2: [Step name]
-- Action: [Action performed]
-- Result: [Action result]
+## Summary
+- **Task:** T-XX
+- **Status:** ✅ Success / ❌ Failed
+- **Duration:** X.Xs
+- **Timestamp:** YYYY-MM-DD HH:MM:SS
 
 ---
 
-## 📦 Output Result
+## Process
 
-[Actual output content]
+### Step 1: [Name]
+- Action: [What was done]
+- Result: [Outcome]
+
+### Step 2: [Name]
+- Action: [What was done]
+- Result: [Outcome]
 
 ---
 
-## 📊 Statistics
+## Output
+
+[Actual result content]
+
+---
+
+## Stats
 
 | Metric | Value |
 |--------|-------|
 | Items processed | X |
-| Successful | X |
+| Succeeded | X |
 | Warnings | X |
 | Errors | X |
 
 ---
 
-## ⚠️ Warnings and Errors
+## Issues
 
 ### Warnings
-- [Warning information]
+- [Warning message]
 
 ### Errors
-- [Error information and handling]
+- [Error message and resolution]
 
 ---
 
-## 📎 Additional Information
+## Notes
 
-[Extra information useful for subsequent tasks]
+[Additional info useful for downstream tasks]
 ```
 
 ---
 
-## 4. Final Output Template (final_output.md)
+## 4. Final Output Template
+
+**File:** `.orchestrator/final_output.md`
 
 ```markdown
-# 📊 Distributed Task Execution Report
+# Execution Report
 
-## Execution Summary
+## Summary
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | N |
-| Successful tasks | X |
-| Failed tasks | Y |
-| Total duration | Zs |
-| Parallel efficiency | XX% |
+| Total Tasks | N |
+| Succeeded | X |
+| Failed | Y |
+| Duration | Zs |
+| Parallel Efficiency | XX% |
 
 ---
 
-## 🎯 Original Goal
-
-> [User's original request]
+## Original Request
+> [User's request]
 
 ---
 
-## ✅ Completion Status
+## Task Results
 
-### Task Completion Details
-
-| Task ID | Task Name | Agent | Status | Duration |
-|---------|-----------|-------|--------|----------|
+| ID | Task | Agent | Status | Duration |
+|----|------|-------|--------|----------|
 | T-01 | [Name] | Agent-01 | ✅ | 1.2s |
 | T-02 | [Name] | Agent-02 | ✅ | 2.3s |
 | T-03 | [Name] | Agent-03 | ✅ | 1.8s |
@@ -252,195 +242,193 @@
 
 ---
 
-## 📦 Integrated Results
+## Integrated Results
 
-[Final result logically integrated from each Agent's output]
+### [Section 1]
+[Content from Agent-01]
 
-### Part One: [Title]
-[Processing result from Agent-01]
+### [Section 2]
+[Merged content from Agent-02 and Agent-03]
 
-### Part Two: [Title]
-[Merged results from Agent-02 and Agent-03]
-
-### Part Three: [Title]
-[Processing result from Agent-04]
+### [Section 3]
+[Content from Agent-04]
 
 ---
 
-## 📈 Key Findings/Recommendations
+## Key Findings
 
-1. [Finding/Recommendation 1]
-2. [Finding/Recommendation 2]
-3. [Finding/Recommendation 3]
-
----
-
-## ⚠️ Notes
-
-- [Items requiring user attention]
-- [Suggested follow-up actions]
+1. [Finding 1]
+2. [Finding 2]
+3. [Finding 3]
 
 ---
 
-## 📝 Execution Timeline
+## Recommendations
+
+- [Recommendation 1]
+- [Recommendation 2]
+
+---
+
+## Timeline
 
 ```
 T-01: ████████ (1.2s)
 T-02:          ████████████ (2.3s)
 T-03:          █████████ (1.8s)  
 T-04:                         █████ (0.9s)
-─────────────────────────────────────────→ Time
-0s                                      4.2s
+────────────────────────────────────────→ Time
+0s                                     4.2s
 ```
 
 ---
 
-## 📎 Appendix
+## Appendix
 
-### A. Detailed Agent Outputs
+### Agent Outputs
 - [Agent-01 Result](./results/agent-01-result.md)
 - [Agent-02 Result](./results/agent-02-result.md)
 - [Agent-03 Result](./results/agent-03-result.md)
 - [Agent-04 Result](./results/agent-04-result.md)
 
-### B. Error Log
-[List any errors here]
+### Errors Encountered
+[List if any]
 ```
 
 ---
 
-## 5. CLI Launch Scripts
+## 5. Quick Init Script
 
-### Windows PowerShell (run-agents.ps1)
+### Windows PowerShell
+
+**File:** `init-orchestrator.ps1`
 
 ```powershell
-# Distributed Task Orchestration - Agent Launch Script
-# Usage: .\run-agents.ps1 [-Parallel] [-MaxJobs 5]
+param([string]$Name = "task")
 
+$base = ".orchestrator"
+@("$base", "$base/agent_tasks", "$base/results") | ForEach-Object {
+    if (-not (Test-Path $_)) {
+        New-Item -ItemType Directory -Path $_ -Force | Out-Null
+        Write-Host "Created: $_" -ForegroundColor Green
+    }
+}
+
+@"
+# Task Plan: $Name
+
+## Request
+> [Fill in request]
+
+## Tasks
+| ID | Name | Deps | Status |
+|----|------|------|--------|
+| T-01 | | None | 🟡 |
+
+## Agents
+| Task | Agent | Status |
+|------|-------|--------|
+| T-01 | Agent-01 | 🟡 |
+
+## Log
+### [$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Initialized
+"@ | Out-File "$base/master_plan.md" -Encoding UTF8
+
+Write-Host "Initialized: $base/master_plan.md" -ForegroundColor Cyan
+```
+
+### Bash
+
+**File:** `init-orchestrator.sh`
+
+```bash
+#!/bin/bash
+NAME=${1:-task}
+BASE=".orchestrator"
+
+mkdir -p "$BASE/agent_tasks" "$BASE/results"
+
+cat > "$BASE/master_plan.md" << EOF
+# Task Plan: $NAME
+
+## Request
+> [Fill in request]
+
+## Tasks
+| ID | Name | Deps | Status |
+|----|------|------|--------|
+| T-01 | | None | 🟡 |
+
+## Agents
+| Task | Agent | Status |
+|------|-------|--------|
+| T-01 | Agent-01 | 🟡 |
+
+## Log
+### [$(date '+%Y-%m-%d %H:%M:%S')] Initialized
+EOF
+
+echo "Initialized: $BASE/master_plan.md"
+```
+
+---
+
+## 6. Execution Script
+
+### Windows PowerShell
+
+**File:** `run-agents.ps1`
+
+```powershell
 param(
-    [switch]$Parallel = $false,
+    [switch]$Parallel,
     [int]$MaxJobs = 4,
     [string]$TaskDir = ".orchestrator/agent_tasks",
     [string]$ResultDir = ".orchestrator/results"
 )
 
-# Ensure result directory exists
 if (-not (Test-Path $ResultDir)) {
     New-Item -ItemType Directory -Path $ResultDir -Force | Out-Null
 }
 
-# Get all task files
-$taskFiles = Get-ChildItem "$TaskDir/*.md" | Sort-Object Name
-
-Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  🚀 Distributed Task Orchestration - Agent Executor" -ForegroundColor Cyan
-Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Found $($taskFiles.Count) tasks" -ForegroundColor Yellow
-Write-Host "Parallel mode: $Parallel (Max: $MaxJobs)" -ForegroundColor Yellow
-Write-Host ""
+$tasks = Get-ChildItem "$TaskDir/*.md" | Sort-Object Name
+Write-Host "Found $($tasks.Count) tasks (Parallel: $Parallel)" -ForegroundColor Cyan
 
 if ($Parallel) {
-    $jobs = foreach ($file in $taskFiles) {
-        $agentId = $file.BaseName
-        Start-Job -Name $agentId -ScriptBlock {
-            param($taskPath, $resultPath, $agentName)
-            $task = Get-Content $taskPath -Raw
-            $startTime = Get-Date
-            
-            try {
-                $result = claude -p $task 2>&1
-                $endTime = Get-Date
-                $duration = ($endTime - $startTime).TotalSeconds
-                
-                @"
-# Agent Execution Result
-
-## Execution Info
-- Agent: $agentName
-- Status: ✅ Success
-- Start: $startTime
-- End: $endTime
-- Duration: $duration seconds
-
-## Output
-
-$result
-"@ | Out-File $resultPath -Encoding UTF8
-                
-                return @{ Agent = $agentName; Status = "Success"; Duration = $duration }
-            }
-            catch {
-                $endTime = Get-Date
-                @"
-# Agent Execution Result
-
-## Execution Info
-- Agent: $agentName
-- Status: ❌ Failed
-- Start: $startTime
-- End: $endTime
-- Error: $($_.Exception.Message)
-"@ | Out-File $resultPath -Encoding UTF8
-                
-                return @{ Agent = $agentName; Status = "Failed"; Error = $_.Exception.Message }
-            }
-        } -ArgumentList $file.FullName, "$ResultDir/$agentId-result.md", $agentId
+    $jobs = foreach ($file in $tasks) {
+        $name = $file.BaseName
+        Start-Job -Name $name -ScriptBlock {
+            param($path, $out)
+            claude --print (Get-Content $path -Raw) | Out-File $out -Encoding UTF8
+        } -ArgumentList $file.FullName, "$ResultDir/$name-result.md"
     }
     
-    Write-Host "Waiting for tasks..." -ForegroundColor Yellow
     $jobs | Wait-Job | Out-Null
     
-    Write-Host ""
-    Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Green
-    Write-Host "                  Execution Complete" -ForegroundColor Green
-    Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Green
-    
     foreach ($job in $jobs) {
-        $result = Receive-Job $job
-        if ($result.Status -eq "Success") {
-            Write-Host "✅ $($result.Agent): Success ($([math]::Round($result.Duration, 2))s)" -ForegroundColor Green
-        } else {
-            Write-Host "❌ $($result.Agent): Failed - $($result.Error)" -ForegroundColor Red
-        }
+        $icon = if ($job.State -eq 'Completed') { "✅" } else { "❌" }
+        Write-Host "$icon $($job.Name)" -ForegroundColor $(if ($job.State -eq 'Completed') { 'Green' } else { 'Red' })
     }
     
     $jobs | Remove-Job
-}
-else {
-    foreach ($file in $taskFiles) {
-        $agentId = $file.BaseName
-        Write-Host "▶ Executing $agentId..." -ForegroundColor Cyan
-        
-        $task = Get-Content $file.FullName -Raw
-        $startTime = Get-Date
-        
-        try {
-            $result = claude -p $task 2>&1
-            $endTime = Get-Date
-            $duration = ($endTime - $startTime).TotalSeconds
-            
-            $result | Out-File "$ResultDir/$agentId-result.md" -Encoding UTF8
-            Write-Host "  ✅ Completed ($([math]::Round($duration, 2))s)" -ForegroundColor Green
-        }
-        catch {
-            Write-Host "  ❌ Failed: $($_.Exception.Message)" -ForegroundColor Red
-        }
+} else {
+    foreach ($file in $tasks) {
+        $name = $file.BaseName
+        Write-Host "▶ $name" -ForegroundColor Yellow
+        claude --print (Get-Content $file.FullName -Raw) | Out-File "$ResultDir/$name-result.md" -Encoding UTF8
+        Write-Host "  ✅ Done" -ForegroundColor Green
     }
 }
 
-Write-Host ""
-Write-Host "Results saved to: $ResultDir" -ForegroundColor Yellow
+Write-Host "`nResults: $ResultDir" -ForegroundColor Cyan
 ```
 
-### Bash Script (run-agents.sh)
+### Bash
+
+**File:** `run-agents.sh`
 
 ```bash
 #!/bin/bash
-
-# Distributed Task Orchestration - Agent Launch Script
-# Usage: ./run-agents.sh [-p] [-j 4]
-
 PARALLEL=false
 MAX_JOBS=4
 TASK_DIR=".orchestrator/agent_tasks"
@@ -455,114 +443,25 @@ done
 
 mkdir -p "$RESULT_DIR"
 
-echo "═══════════════════════════════════════════════════"
-echo "  🚀 Distributed Task Orchestration - Agent Executor"
-echo "═══════════════════════════════════════════════════"
-echo ""
+echo "Found $(ls -1 "$TASK_DIR"/*.md 2>/dev/null | wc -l) tasks (Parallel: $PARALLEL)"
 
-task_count=$(ls -1 "$TASK_DIR"/*.md 2>/dev/null | wc -l)
-echo "Found $task_count tasks"
-echo "Parallel mode: $PARALLEL (Max: $MAX_JOBS)"
-echo ""
-
-run_agent() {
-    local task_file=$1
-    local agent_id=$(basename "$task_file" .md)
-    local result_file="$RESULT_DIR/${agent_id}-result.md"
-    
-    local start_time=$(date +%s)
-    
-    if claude -p "$(cat "$task_file")" > "$result_file" 2>&1; then
-        local end_time=$(date +%s)
-        local duration=$((end_time - start_time))
-        echo "✅ $agent_id: Success (${duration}s)"
-    else
-        echo "❌ $agent_id: Failed"
-    fi
+run_task() {
+    local file=$1
+    local name=$(basename "$file" .md)
+    claude --print "$(cat "$file")" > "$RESULT_DIR/${name}-result.md"
+    echo "✅ $name"
 }
 
-export -f run_agent
+export -f run_task
 export RESULT_DIR
 
 if $PARALLEL; then
-    ls -1 "$TASK_DIR"/*.md | parallel -j "$MAX_JOBS" run_agent {}
+    ls "$TASK_DIR"/*.md | parallel -j "$MAX_JOBS" run_task {}
 else
-    for task_file in "$TASK_DIR"/*.md; do
-        run_agent "$task_file"
+    for file in "$TASK_DIR"/*.md; do
+        run_task "$file"
     done
 fi
 
-echo ""
-echo "Results saved to: $RESULT_DIR"
-```
-
----
-
-## 6. Quick Initialization Script
-
-### init-orchestrator.ps1
-
-```powershell
-# Initialize distributed task orchestration directory structure
-param(
-    [string]$ProjectName = "task"
-)
-
-$baseDir = ".orchestrator"
-
-# Create directories
-$dirs = @(
-    $baseDir,
-    "$baseDir/agent_tasks",
-    "$baseDir/results"
-)
-
-foreach ($dir in $dirs) {
-    if (-not (Test-Path $dir)) {
-        New-Item -ItemType Directory -Path $dir -Force | Out-Null
-        Write-Host "✅ Created: $dir" -ForegroundColor Green
-    }
-}
-
-# Create master plan
-$masterPlan = @"
-# 🎯 Distributed Task Plan: $ProjectName
-
-## Original Request
-> [Fill in user request here]
-
-## Goal Definition
-**Primary Goal**: [Goal description]
-**Success Criteria**: [Success criteria]
-
----
-
-## 📋 Task Decomposition
-
-| Task ID | Task Name | Description | Dependencies | Priority |
-|---------|-----------|-------------|--------------|----------|
-| T-01 | | | None | P0 |
-
----
-
-## 🤖 Agent Assignment
-
-| Task ID | Agent | Status | Start Time | End Time |
-|---------|-------|--------|------------|----------|
-| T-01 | Agent-01 | 🟡 Pending | - | - |
-
----
-
-## 📝 Execution Log
-
-### [$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Initialization
-- Task plan created
-"@
-
-$masterPlan | Out-File "$baseDir/master_plan.md" -Encoding UTF8
-Write-Host "✅ Created: $baseDir/master_plan.md" -ForegroundColor Green
-
-Write-Host ""
-Write-Host "🎉 Initialization complete!" -ForegroundColor Cyan
-Write-Host "Next: Edit $baseDir/master_plan.md to define tasks" -ForegroundColor Yellow
+echo "Results: $RESULT_DIR"
 ```

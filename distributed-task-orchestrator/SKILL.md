@@ -1,257 +1,143 @@
 ---
 name: distributed-task-orchestrator
-description: Advanced distributed task orchestration system. Decomposes complex requests into atomic tasks, manages parallel sub-agent execution, supports Claude CLI integration. Use when handling complex multi-step tasks requiring parallel execution, task decomposition, or sub-agent orchestration.
+description: Decompose complex tasks into parallel sub-agents. Use for multi-step operations, batch processing, or when user mentions "parallel", "agents", or "orchestrate".
 ---
 
 # Distributed Task Orchestrator
 
-You are an advanced distributed task orchestration system. Your core capability is decomposing complex user requests into independent atomic tasks, managing parallel Sub-Agent execution, and aggregating results.
+You are an advanced distributed task orchestration system. Decompose complex requests into independent atomic tasks, manage parallel execution, and aggregate results.
 
-## Decision Flow
-
-Before starting orchestration, evaluate:
+## Quick Decision
 
 ```
-Is the task complex? (3+ independent steps, multiple files, parallel opportunities)
-├── NO → Execute directly without orchestration
-└── YES → Does user want real CLI execution?
-    ├── NO → Use simulated parallel execution (Method A)
-    └── YES → Use Claude CLI sub-agents (Method B)
+Is task complex? (3+ independent steps, multiple files, parallel benefit)
+├── NO → Execute directly, skip orchestration
+└── YES → Use orchestration
+    ├── Simulated mode (default) → Present as parallel batches
+    └── CLI mode (user requests) → Launch real Claude CLI sub-agents
 ```
 
-**Skip orchestration for:**
-- Single-file operations
-- Simple queries or explanations
-- Tasks completable in < 3 steps
-- Sequential operations with no parallelism benefit
+**Skip orchestration for:** single-file ops, simple queries, < 3 steps, purely sequential tasks.
 
-## Quick Start
+## Core Workflow
 
-For complex tasks requiring orchestration:
+### Phase 1: Decompose
 
-```bash
-mkdir -p .orchestrator/agent_tasks .orchestrator/results
-```
-
-## Core Four-Phase Workflow
-
-### Phase 1: Task Analysis and Decomposition
-
-1. **Analyze user intent** - identify dependencies
-2. **Decompose into atomic tasks** - each independently executable
-3. **Define I/O** - input parameters and expected output per task
-
-Create `.orchestrator/master_plan.md`:
+Analyze request → Break into atomic tasks → Map dependencies → Create `.orchestrator/master_plan.md`
 
 ```markdown
-# Distributed Task Plan
+# Task Plan
 
-## Original Request
-> [User's request]
+## Request
+> [Original request]
 
-## Task Decomposition
-| Task ID | Description | Dependencies | Input | Expected Output |
-|---------|-------------|--------------|-------|-----------------|
-| T-01 | [Desc] | None | [Input] | [Output type] |
-| T-02 | [Desc] | T-01 | [T-01 output] | [Output type] |
-| T-03 | [Desc] | None | [Input] | [Output type] |
+## Tasks
+| ID | Task | Deps | Status |
+|----|------|------|--------|
+| T-01 | [Description] | None | 🟡 |
+| T-02 | [Description] | T-01 | ⏸️ |
 ```
 
-### Phase 2: Agent Assignment
+**Status:** 🟡 Pending · 🔵 Running · ✅ Done · ❌ Failed · ⏸️ Waiting
 
-1. Assign **virtual agent** per atomic task (Agent-01, Agent-02, ...)
-2. Create **status table**
-3. Generate **task files** for each Agent
+### Phase 2: Assign Agents
+
+Create `.orchestrator/agent_tasks/agent-XX.md` for each task:
 
 ```markdown
-## Status Table
-| Task ID | Agent | Status | Start | End |
-|---------|-------|--------|-------|-----|
-| T-01 | Agent-01 | 🟡 Pending | - | - |
-| T-02 | Agent-02 | ⏸️ Waiting | - | - |
-| T-03 | Agent-03 | 🟡 Pending | - | - |
+# Agent-XX: [Task Name]
+**Input:** [parameters]
+**Do:** [specific instructions]
+**Output:** [expected format]
 ```
 
-**Status Icons:**
-- 🟡 Pending - ready to execute
-- 🔵 Running - currently executing
-- ✅ Completed - finished successfully
-- ❌ Failed - execution failed
-- ⏸️ Waiting - blocked by dependencies
+### Phase 3: Execute
 
-### Phase 3: Execution
-
-#### Method A: Simulated Parallel Execution (Default)
-
-Execute sequentially but present as parallel batches:
+**Simulated Mode (Default):**
 
 ```
-═══════════════════════════════════════════════════
-🚀 Batch #1 (No Dependencies)
-═══════════════════════════════════════════════════
-
+═══ Batch #1 (No Dependencies) ═══
 🤖 Agent-01 [T-01: Task Name]
-───────────────────────────────────────────────────
-📥 Input: [description]
-⚙️ Executing:
-   1. [Step 1]
-   2. [Step 2]
-📤 Output: [result summary]
-✅ Completed
+   ⚙️ [Execution steps...]
+   ✅ Completed
 
-🤖 Agent-03 [T-03: Task Name]
-───────────────────────────────────────────────────
-📥 Input: [description]
-⚙️ Executing:
-   1. [Step 1]
-📤 Output: [result summary]
-✅ Completed
-
-═══════════════════════════════════════════════════
-🚀 Batch #2 (After Batch #1)
-═══════════════════════════════════════════════════
-
+═══ Batch #2 (After Batch #1) ═══
 🤖 Agent-02 [T-02: Task Name]
-───────────────────────────────────────────────────
-...
+   ⚙️ [Execution steps...]
+   ✅ Completed
 ```
 
-#### Method B: Claude CLI Sub-Agents (Real Parallel)
+**CLI Mode (When Requested):**
 
-Use when user explicitly requests CLI execution:
-
-**Windows PowerShell:**
 ```powershell
-# Single agent
-$task = Get-Content ".orchestrator/agent_tasks/agent-01.md" -Raw
-claude -p $task | Out-File ".orchestrator/results/agent-01-result.md"
-
-# Parallel agents
+# Windows - Parallel execution
 $jobs = Get-ChildItem ".orchestrator/agent_tasks/*.md" | ForEach-Object {
     Start-Job -ScriptBlock {
         param($path, $out)
-        claude -p (Get-Content $path -Raw) | Out-File $out
+        claude --print (Get-Content $path -Raw) | Out-File $out
     } -ArgumentList $_.FullName, ".orchestrator/results/$($_.BaseName)-result.md"
 }
-$jobs | Wait-Job | Receive-Job
-$jobs | Remove-Job
+$jobs | Wait-Job | Receive-Job; $jobs | Remove-Job
 ```
 
-**Linux/Mac:**
 ```bash
-# Single agent
-claude -p "$(cat .orchestrator/agent_tasks/agent-01.md)" > .orchestrator/results/agent-01-result.md
-
-# Parallel agents (requires GNU parallel)
-parallel claude -p "$(cat {})" ">" .orchestrator/results/{/.}-result.md ::: .orchestrator/agent_tasks/*.md
+# Linux/Mac - Using GNU parallel
+parallel claude --print "$(cat {})" ">" .orchestrator/results/{/.}-result.md ::: .orchestrator/agent_tasks/*.md
 ```
 
-### Phase 4: Result Aggregation
+### Phase 4: Aggregate
 
-1. Collect all Agent results
-2. Assemble based on dependency order
-3. Handle cross-Agent data dependencies
-4. Generate final output
+Collect results → Merge by dependency order → Generate `.orchestrator/final_output.md`
 
 ```markdown
-# .orchestrator/final_output.md
+# Execution Report
+- Tasks: N total, X succeeded, Y failed
+- Duration: Zs
 
-## Execution Summary
-- Total tasks: N
-- Successful: X
-- Failed: Y
-- Duration: Z
+## Results
+[Integrated findings organized logically]
 
-## Integrated Results
-[Merged output organized logically]
-
-## Key Findings
+## Key Takeaways
 1. [Finding 1]
 2. [Finding 2]
 ```
 
-## Agent Task File Template
-
-`.orchestrator/agent_tasks/agent-XX.md`:
-
-```markdown
-# Agent-XX Task
-
-## Task ID
-T-XX
-
-## Description
-[Specific task description]
-
-## Input
-- [Parameter 1]: [Value/Source]
-- [Parameter 2]: [Value/Source]
-
-## Expected Output
-[Format and content expectations]
-
-## Constraints
-- [Constraint 1]
-- [Constraint 2]
-```
-
 ## Dependency Patterns
 
-**Serial:** T-01 → T-02 → T-03 (each waits for previous)
-
-**Parallel:** T-01, T-02, T-03 → T-04 (first three parallel, T-04 waits for all)
-
-**DAG:** Complex graphs use topological sort for execution order
+- **Parallel:** T-01, T-02, T-03 → T-04 (first three run together)
+- **Serial:** T-01 → T-02 → T-03 (each waits for previous)
+- **DAG:** Complex graphs use topological sort
 
 ## Error Handling
 
-```markdown
-## Error Log
-| Agent | Task | Error | Strategy |
-|-------|------|-------|----------|
-| Agent-02 | T-02 | Timeout | Retry 3x |
-| Agent-05 | T-05 | Dep failed | Skip |
-```
-
-**Recovery strategies:**
-- Retry with exponential backoff (default: 3 attempts)
-- Skip and mark (for non-critical tasks)
-- Fail-fast (for critical dependencies)
+| Strategy | When to Use |
+|----------|-------------|
+| Retry (3x, exponential backoff) | Timeouts, transient failures |
+| Skip and continue | Non-critical tasks |
+| Fail-fast | Critical dependencies |
 
 ## Best Practices
 
-### Task Granularity
-- Target 1-5 minute completion per task
-- Split large tasks, merge trivial ones
-- Each task should have clear success criteria
-
-### Maximize Parallelism
-- Minimize inter-task dependencies
-- Use file-based data passing
-- Batch independent operations
-
-### State Management
-- Update `master_plan.md` on state changes
-- Use filesystem as persistent memory
-- Log all executions for debugging
+1. **Granularity:** Target 1-5 min per task; split large, merge trivial
+2. **Parallelism:** Minimize dependencies; use file-based data passing
+3. **State:** Update `master_plan.md` on every status change
 
 ## Trigger Conditions
 
-**Use this skill when:**
-- Complex multi-step tasks (3+ independent steps)
+**USE when:**
+- 3+ independent steps possible
 - User mentions: "parallel", "concurrent", "subtasks", "agents"
-- Multiple independent operations possible
-- Need Claude CLI for real sub-agent execution
-- Large-scale batch processing
+- Batch processing needed
+- Claude CLI sub-agents requested
 
-**Do NOT use when:**
-- Simple single-step tasks
-- Purely sequential operations
-- Quick queries or explanations
+**SKIP when:**
+- Single-step task
+- Quick query/explanation
+- Purely sequential with no parallel benefit
 
-## Related Documentation
+## Related Files
 
-- [workflow.md](workflow.md) - Detailed workflow specification
-- [templates.md](templates.md) - Complete template collection
-- [cli-integration.md](cli-integration.md) - Claude CLI deep integration
-- [examples.md](examples.md) - Practical usage examples
+- [workflow.md](workflow.md) - Detailed workflow spec
+- [templates.md](templates.md) - Complete templates
+- [cli-integration.md](cli-integration.md) - CLI deep dive
+- [examples.md](examples.md) - Practical examples

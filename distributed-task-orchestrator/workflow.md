@@ -1,381 +1,287 @@
-# Workflow: Detailed Distributed Task Orchestration Workflow
+# Workflow: Detailed Execution Specification
 
-## Complete Execution Flow
+## Execution Flow Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    User Submits Complex Request                  │
-└─────────────────────────────────┬───────────────────────────────┘
-                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Phase 1: Task Analysis and Decomposition                         │
-│ ┌───────────────────────────────────────────────────────────┐   │
-│ │ 1.1 Parse user intent                                      │   │
-│ │ 1.2 Identify dependencies (build DAG)                      │   │
-│ │ 1.3 Break down into atomic tasks                           │   │
-│ │ 1.4 Define Input/Output for each task                      │   │
-│ └───────────────────────────────────────────────────────────┘   │
-│ Output: .orchestrator/master_plan.md                             │
-└─────────────────────────────────┬───────────────────────────────┘
-                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Phase 2: Agent Assignment and Status Marking                     │
-│ ┌───────────────────────────────────────────────────────────┐   │
-│ │ 2.1 Assign Agent ID for each task                          │   │
-│ │ 2.2 Create task status table                               │   │
-│ │ 2.3 Generate Agent task files                              │   │
-│ │ 2.4 Initialize status as "Pending"                         │   │
-│ └───────────────────────────────────────────────────────────┘   │
-│ Output: .orchestrator/agent_tasks/agent-XX.md                    │
-└─────────────────────────────────┬───────────────────────────────┘
-                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Phase 3: Parallel Execution                                      │
-│ ┌───────────────────────────────────────────────────────────┐   │
-│ │ 3.1 Identify parallelizable task groups                    │   │
-│ │ 3.2 Choose execution method (simulated / CLI)              │   │
-│ │ 3.3 Execute tasks with no dependencies                     │   │
-│ │ 3.4 Execute subsequent tasks after dependencies complete   │   │
-│ │ 3.5 Record execution logs                                  │   │
-│ └───────────────────────────────────────────────────────────┘   │
-│ Output: .orchestrator/results/agent-XX-result.md                 │
-└─────────────────────────────────┬───────────────────────────────┘
-                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Phase 4: Result Aggregation and Integration                      │
-│ ┌───────────────────────────────────────────────────────────┐   │
-│ │ 4.1 Collect all Agent results                              │   │
-│ │ 4.2 Verify result completeness                             │   │
-│ │ 4.3 Merge results according to dependency order            │   │
-│ │ 4.4 Generate final output                                  │   │
-│ └───────────────────────────────────────────────────────────┘   │
-│ Output: .orchestrator/final_output.md                            │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                   User Request Received                      │
+└──────────────────────────┬──────────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Phase 1: Task Decomposition                                  │
+│  • Parse intent and identify dependencies                    │
+│  • Break into atomic tasks                                   │
+│  • Define I/O for each task                                  │
+│  → Output: .orchestrator/master_plan.md                      │
+└──────────────────────────┬──────────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Phase 2: Agent Assignment                                    │
+│  • Assign Agent ID per task                                  │
+│  • Create status table                                       │
+│  • Generate agent task files                                 │
+│  → Output: .orchestrator/agent_tasks/agent-XX.md             │
+└──────────────────────────┬──────────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Phase 3: Parallel Execution                                  │
+│  • Group tasks by dependency level                           │
+│  • Execute each batch (simulated or CLI)                     │
+│  • Record logs and handle errors                             │
+│  → Output: .orchestrator/results/agent-XX-result.md          │
+└──────────────────────────┬──────────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Phase 4: Result Aggregation                                  │
+│  • Collect all agent results                                 │
+│  • Verify completeness                                       │
+│  • Merge by dependency order                                 │
+│  → Output: .orchestrator/final_output.md                     │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Phase 1: Task Analysis and Decomposition
+---
 
-### 1.1 Parse User Intent
+## Phase 1: Task Decomposition
 
-```markdown
-## Intent Analysis Checklist
+### 1.1 Intent Analysis
 
-### Core Objectives
-- [ ] What is the primary goal?
-- [ ] What are the secondary goals?
-- [ ] What are the success criteria?
+Before decomposing, answer these questions:
 
-### Constraints
-- [ ] Time constraints?
-- [ ] Resource constraints?
-- [ ] Technical constraints?
+| Question | Purpose |
+|----------|---------|
+| What is the primary goal? | Define success criteria |
+| What are implicit requirements? | Avoid missing expectations |
+| What constraints exist? | Time, resources, scope |
+| Can it be parallelized? | Determine if orchestration needed |
 
-### Implicit Requirements
-- [ ] What does the user expect but didn't explicitly state?
-- [ ] Industry best practices to follow?
-```
-
-### 1.2 Dependency Analysis
-
-**Dependency Types:**
+### 1.2 Dependency Types
 
 | Type | Description | Example |
 |------|-------------|---------|
-| Data Dependency | B needs A's output as input | Analyze code → Generate report |
-| Sequential Dependency | B must execute after A | Create file → Write content |
-| Resource Dependency | A and B compete for same resource | Write to same file |
-| No Dependency | Completely independent | Process different files |
+| Data | B needs A's output | Parse file → Analyze data |
+| Sequential | B must follow A | Create dir → Write file |
+| Resource | A and B share resource | Write to same file |
+| None | Independent | Process different files |
 
-**Building Dependency Graph:**
+### 1.3 Atomic Task Criteria
+
+A well-defined atomic task must be:
+
+- **Single Responsibility** - Does exactly one thing
+- **Independent** - No runtime context dependency
+- **Verifiable** - Clear success/failure criteria
+- **Retriable** - Can safely retry after failure
+
+### 1.4 Building the Dependency Graph
 
 ```
-Example: Code Review Task
+Example: Code Review
 
-          ┌─→ [T-02: Check code style] ─┐
-[T-01] ──┤                              ├──→ [T-05: Generate report]
-Read code ├─→ [T-03: Security scan] ────┤
-          └─→ [T-04: Performance check] ─┘
+          ┌─→ [T-02: Style Check] ─┐
+[T-01] ──┤                         ├──→ [T-05: Report]
+Read code ├─→ [T-03: Security]  ───┤
+          └─→ [T-04: Performance] ─┘
 ```
 
-### 1.3 Atomic Task Definition
-
-**Atomic Task Criteria:**
-- ✅ Single Responsibility: Does only one thing
-- ✅ Independently Executable: No runtime context dependency
-- ✅ Verifiable Output: Clear success/failure criteria
-- ✅ Retriable: Can be safely retried after failure
-
-```markdown
-## Task: T-03
-
-### Definition
-- **Task Name**: Security vulnerability scan
-- **Input**: Source code file list
-- **Output**: Vulnerability report JSON
-- **Estimated Time**: 2 minutes
-
-### Atomicity Check
-- [x] Single responsibility
-- [x] Independently executable
-- [x] Verifiable output
-- [x] Safe to retry
-```
+---
 
 ## Phase 2: Agent Assignment
 
-### 2.1 Agent ID Assignment Rules
+### 2.1 Naming Convention
 
 ```
-Agent-{sequence}
-Sequence: 01, 02, 03, ... (two-digit zero-padded)
+Agent-{NN}  where NN = 01, 02, 03, ...
 ```
 
-### 2.2 Complete Task Status Table
+### 2.2 Priority Levels
 
-```markdown
-| Task ID | Description | Agent | Status | Priority | Deps | Start | End | Retries |
-|---------|-------------|-------|--------|----------|------|-------|-----|---------|
-| T-01 | Read code | Agent-01 | ✅ | P0 | None | 10:00 | 10:01 | 0 |
-| T-02 | Style check | Agent-02 | 🔵 | P1 | T-01 | 10:01 | - | 0 |
-| T-03 | Security scan | Agent-03 | 🔵 | P1 | T-01 | 10:01 | - | 0 |
-| T-04 | Perf analysis | Agent-04 | 🟡 | P1 | T-01 | - | - | 0 |
-| T-05 | Gen report | Agent-05 | ⏸️ | P2 | T-02,T-03,T-04 | - | - | 0 |
+| Priority | Meaning | Execute |
+|----------|---------|---------|
+| P0 | Critical path | First |
+| P1 | Has downstream deps | High |
+| P2 | Standard | Normal |
+| P3 | Optional/Deferrable | Last |
+
+### 2.3 Status Transitions
+
+```
+🟡 Pending ──→ 🔵 Running ──→ ✅ Completed
+                    │
+                    ▼
+               ❌ Failed ──→ 🔄 Retrying ──→ (back to Running)
+
+⏸️ Waiting ──→ (deps complete) ──→ 🟡 Pending
 ```
 
-### 2.3 Priority Definitions
+---
 
-| Priority | Meaning | Description |
-|----------|---------|-------------|
-| P0 | Critical Path | Blocks other tasks, execute first |
-| P1 | High Priority | Has downstream dependencies |
-| P2 | Normal | Standard priority |
-| P3 | Low Priority | Can be delayed |
+## Phase 3: Execution
 
-## Phase 3: Parallel Execution
-
-### 3.1 Execution Scheduling Algorithm
+### 3.1 Batch Scheduling Algorithm
 
 ```python
-# Pseudocode: Topological Sort + Parallel Scheduling
-def schedule_tasks(tasks, dependencies):
-    ready_queue = [t for t in tasks if no_dependencies(t)]
-    running = set()
+def schedule(tasks, deps):
+    ready = [t for t in tasks if no_deps(t)]
     completed = set()
     
-    while ready_queue or running:
-        # Start all ready tasks
-        for task in ready_queue:
-            start_agent(task)
-            running.add(task)
-        ready_queue.clear()
+    while ready or running:
+        # Launch all ready tasks
+        for task in ready:
+            start(task)
+        ready.clear()
         
-        # Wait for any task to complete
-        finished = wait_any(running)
-        completed.add(finished)
-        running.remove(finished)
+        # Wait for any to complete
+        done = wait_any(running)
+        completed.add(done)
         
-        # Check for newly ready tasks
-        for task in tasks:
-            if task not in completed and task not in running:
-                if all_deps_complete(task, completed):
-                    ready_queue.append(task)
+        # Find newly ready tasks
+        for task in remaining:
+            if all_deps_in(task, completed):
+                ready.append(task)
 ```
 
-### 3.2 Simulated Execution Output Format
+### 3.2 Simulated Execution Format
 
 ```
-══════════════════════════════════════════════════════════════════
-                    🚀 Parallel Execution Batch #1
-══════════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════
+🚀 Batch #1 (No Dependencies)
+═══════════════════════════════════════════════════════════
 
-┌──────────────────────────────────────────────────────────────────
-│ 🤖 Agent-01 [T-01: Read Code]
-├──────────────────────────────────────────────────────────────────
-│ 📥 Instruction: Read all .ts files in src/ directory
-│ ⚙️ Execution:
-│    → Scan directory structure
-│    → Read 15 TypeScript files
-│    → Calculate file statistics
-│ 📤 Output: 
-│    - File count: 15
-│    - Total lines: 2,847
-│    - Saved to: .orchestrator/results/agent-01-result.md
-│ ⏱️ Duration: 1.2s
-│ ✅ Status: Completed
-└──────────────────────────────────────────────────────────────────
-
-══════════════════════════════════════════════════════════════════
-                    🚀 Parallel Execution Batch #2
-══════════════════════════════════════════════════════════════════
-
-┌──────────────────────────────────────────────────────────────────
-│ 🤖 Agent-02 [T-02: Style Check] ║ Agent-03 [T-03: Security Scan]
-├──────────────────────────────────────────────────────────────────
-│ [Executing in parallel...]
-│ 
-│ Agent-02 completed ✅ (2.1s)
-│ Agent-03 completed ✅ (3.4s)
-└──────────────────────────────────────────────────────────────────
+🤖 Agent-01 [T-01: Task Name]
+───────────────────────────────────────────────────────────
+📥 Input: [description]
+⚙️ Executing:
+   1. [Step 1]
+   2. [Step 2]
+📤 Output: [summary]
+⏱️ Duration: 1.2s
+✅ Completed
 ```
 
-### 3.3 CLI Execution Mode
+### 3.3 CLI Execution
+
+For real parallel execution via Claude CLI:
 
 **Windows PowerShell:**
-
 ```powershell
-# Method 1: Using Jobs
-$taskFiles = Get-ChildItem ".orchestrator/agent_tasks/*.md"
-$jobs = foreach ($file in $taskFiles) {
-    $agentId = $file.BaseName
-    Start-Job -Name $agentId -ScriptBlock {
-        param($taskPath, $resultPath)
-        $task = Get-Content $taskPath -Raw
-        $result = claude -p $task
-        $result | Out-File $resultPath -Encoding UTF8
-    } -ArgumentList $file.FullName, ".orchestrator/results/$agentId-result.md"
+$jobs = Get-ChildItem ".orchestrator/agent_tasks/*.md" | ForEach-Object {
+    $name = $_.BaseName
+    Start-Job -Name $name -ScriptBlock {
+        param($path, $out)
+        $task = Get-Content $path -Raw
+        claude --print $task | Out-File $out -Encoding UTF8
+    } -ArgumentList $_.FullName, ".orchestrator/results/$name-result.md"
 }
 
-# Wait for completion
-$jobs | Wait-Job
-
-# Collect results
-$jobs | ForEach-Object {
-    Write-Host "[$($_.Name)] Status: $($_.State)"
-    Receive-Job $_
+# Monitor progress
+while ($running = $jobs | Where-Object State -eq 'Running') {
+    Write-Progress -Activity "Executing" -Status "$($jobs.Count - $running.Count)/$($jobs.Count)"
+    Start-Sleep -Seconds 1
 }
 
-# Cleanup
+$jobs | Wait-Job | Receive-Job
 $jobs | Remove-Job
 ```
 
-**Method 2: Using Runspace Pool (More Efficient)**
-
-```powershell
-# Create Runspace Pool
-$pool = [RunspaceFactory]::CreateRunspacePool(1, 5)  # Max 5 parallel
-$pool.Open()
-
-$tasks = Get-ChildItem ".orchestrator/agent_tasks/*.md"
-$runspaces = @()
-
-foreach ($task in $tasks) {
-    $ps = [PowerShell]::Create()
-    $ps.RunspacePool = $pool
-    $ps.AddScript({
-        param($taskPath)
-        $content = Get-Content $taskPath -Raw
-        claude -p $content
-    }).AddArgument($task.FullName) | Out-Null
-    
-    $runspaces += [PSCustomObject]@{
-        PowerShell = $ps
-        Handle = $ps.BeginInvoke()
-        Task = $task.BaseName
-    }
-}
-
-# Wait and collect results
-foreach ($rs in $runspaces) {
-    $result = $rs.PowerShell.EndInvoke($rs.Handle)
-    $result | Out-File ".orchestrator/results/$($rs.Task)-result.md"
-    $rs.PowerShell.Dispose()
-}
-
-$pool.Close()
-$pool.Dispose()
+**Bash (with GNU parallel):**
+```bash
+parallel -j4 'claude --print "$(cat {})" > .orchestrator/results/{/.}-result.md' ::: .orchestrator/agent_tasks/*.md
 ```
+
+---
 
 ## Phase 4: Result Aggregation
 
-### 4.1 Result Collection Check
+### 4.1 Collection Checklist
 
+| Agent | Expected File | Status |
+|-------|---------------|--------|
+| Agent-01 | agent-01-result.md | ✅/❌ |
+| Agent-02 | agent-02-result.md | ✅/❌ |
+
+### 4.2 Merge Strategies
+
+**Simple Concatenation:**
 ```markdown
-## Result Collection Checklist
-
-### Expected Results
-| Agent | Result File | Status |
-|-------|-------------|--------|
-| Agent-01 | agent-01-result.md | ✅ Exists |
-| Agent-02 | agent-02-result.md | ✅ Exists |
-| Agent-03 | agent-03-result.md | ❌ Missing |
-
-### Missing Result Handling
-- Agent-03: Re-execute / Mark as failed
-```
-
-### 4.2 Result Merging Strategies
-
-**Strategy A: Simple Concatenation**
-```markdown
-# Final Report
-
+# Results
 ## Agent-01 Output
-[Content]
+[content]
 
 ## Agent-02 Output
-[Content]
+[content]
 ```
 
-**Strategy B: Structured Merge**
+**Structured Merge:**
 ```markdown
-# Code Review Report
+# Analysis Report
 
-## Overview
-- Code style issues: 12 (from Agent-02)
-- Security vulnerabilities: 3 (from Agent-03)
-- Performance issues: 5 (from Agent-04)
+## Summary
+- Issues found: 15 (from Agent-02)
+- Security risks: 3 (from Agent-03)
 
-## Detailed Findings
-### Code Style
-[Merge Agent-02 detailed content]
-
-### Security
-[Merge Agent-03 detailed content]
+## Details
+[Organized by category, not by agent]
 ```
 
-**Strategy C: AI-Powered Merge**
+**AI-Powered Merge:**
 ```powershell
-# Use Claude to merge multiple results
 $results = Get-Content ".orchestrator/results/*.md" -Raw
-$mergePrompt = @"
-Merge the following subtask results into a complete report:
-
-$results
-
-Requirements:
-1. Preserve all key information
-2. Eliminate duplicate content
-3. Organize in logical order
-4. Generate executive summary
-"@
-
-claude -p $mergePrompt | Out-File ".orchestrator/final_output.md"
+$prompt = "Merge these results into a coherent report:`n$results"
+claude --print $prompt | Out-File ".orchestrator/final_output.md"
 ```
 
-## State Persistence Specification
+---
 
-Every state change must update `master_plan.md`:
+## State Persistence
+
+Update `master_plan.md` on every state change:
 
 ```markdown
 ## Execution Log
 
-### [2025-01-12 14:30:00] Initialization
-- Created task plan
-- Assigned 5 Agents
+### [2025-01-12 14:30:00] Initialized
+- Created 5 tasks
+- Assigned 5 agents
 
 ### [2025-01-12 14:30:15] Batch #1 Started
-- Agent-01 started executing T-01
+- Agent-01 executing T-01
 
 ### [2025-01-12 14:30:22] Agent-01 Completed
-- T-01 completed, duration 7s
+- Duration: 7s
 - Output saved
 
-### [2025-01-12 14:30:22] Batch #2 Started
-- Agent-02, Agent-03, Agent-04 launched in parallel
-
-### [2025-01-12 14:30:45] Batch #2 Completed
-- All parallel tasks completed
-
-### [2025-01-12 14:30:50] Result Aggregation Completed
-- Final output: .orchestrator/final_output.md
+### [2025-01-12 14:31:00] All Tasks Completed
+- Total duration: 45s
+- Result: .orchestrator/final_output.md
 ```
+
+---
+
+## Error Recovery
+
+### Retry Logic
+
+```powershell
+function Invoke-WithRetry {
+    param($Task, $MaxRetries = 3)
+    
+    for ($i = 1; $i -le $MaxRetries; $i++) {
+        try {
+            return & $Task
+        } catch {
+            if ($i -eq $MaxRetries) { throw }
+            Start-Sleep -Seconds (5 * $i)  # Exponential backoff
+        }
+    }
+}
+```
+
+### Failure Strategies
+
+| Strategy | Use When |
+|----------|----------|
+| Retry | Timeout, transient network error |
+| Skip | Non-critical task, partial results acceptable |
+| Fail-fast | Critical dependency, data integrity required |
+| Fallback | Alternative method available |
