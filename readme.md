@@ -42,17 +42,20 @@ The Distributed Task Orchestrator transforms how you handle complex, multi-step 
 
 ### Recommended Use Cases
 
-| Trigger | Description | Example |
-|---------|-------------|---------|
-| **Complex multi-step tasks** | Tasks requiring 3+ distinct steps | "Build a complete authentication system" |
-| **Parallel execution needs** | Independent tasks that can run simultaneously | "Translate 5 documents to Chinese" |
-| **Sub-agent orchestration** | Need to coordinate multiple specialized agents | "Analyze code for quality, security, and performance" |
-| **Large-scale analysis** | Tasks requiring analysis of multiple files/components | "Review all API endpoints in the project" |
-| **Task decomposition** | Complex requests needing systematic breakdown | "Refactor the entire frontend architecture" |
+
+| Trigger                      | Description                                           | Example                                               |
+| ---------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
+| **Complex multi-step tasks** | Tasks requiring 3+ distinct steps                     | "Build a complete authentication system"              |
+| **Parallel execution needs** | Independent tasks that can run simultaneously         | "Translate 5 documents to Chinese"                    |
+| **Sub-agent orchestration**  | Need to coordinate multiple specialized agents        | "Analyze code for quality, security, and performance" |
+| **Large-scale analysis**     | Tasks requiring analysis of multiple files/components | "Review all API endpoints in the project"             |
+| **Task decomposition**       | Complex requests needing systematic breakdown         | "Refactor the entire frontend architecture"           |
+
 
 ### Trigger Keywords
 
 The skill activates when users mention:
+
 - "parallel", "simultaneously", "concurrent"
 - "subtask", "sub-task", "atomic task"
 - "agent", "sub-agent", "Agent-01"
@@ -101,6 +104,7 @@ Create `.orchestrator/master_plan.md` with your task decomposition:
 ### 3. Execute and Monitor
 
 The orchestrator will:
+
 1. Execute T-01 first (no dependencies)
 2. Run T-02, T-03, T-04 in parallel (all depend only on T-01)
 3. Execute T-05 after all parallel tasks complete
@@ -125,6 +129,7 @@ The orchestrator will:
 4. **Initialize status** - 🟡 Pending
 
 **Status Icons:**
+
 - 🟡 Pending - Awaiting execution
 - 🔵 Running - Currently executing
 - ✅ Completed - Execution successful
@@ -135,6 +140,7 @@ The orchestrator will:
 ### Phase 3: Parallel Execution
 
 **Method A: Simulated Execution**
+
 ```
 ═══════════════════════════════════════════════════
 🤖 Agent-01 [T-01: Read Code]
@@ -149,6 +155,7 @@ The orchestrator will:
 ```
 
 **Method B: Claude CLI Execution**
+
 ```powershell
 # Launch sub-agents via Claude CLI
 $task = Get-Content ".orchestrator/agent_tasks/agent-01.md" -Raw
@@ -205,6 +212,7 @@ distributed-task-orchestrator/
 **Request:** "Analyze my TypeScript project for code quality, security, and performance"
 
 **Task Decomposition:**
+
 ```
 [T-01: Code Scan] ──┬──→ [T-02: Quality Analysis]
                     ├──→ [T-03: Security Scan]
@@ -214,6 +222,7 @@ distributed-task-orchestrator/
 ```
 
 **Execution Flow:**
+
 1. T-01 reads all source files (1.8s)
 2. T-02, T-03, T-04 run in parallel (3.2s max)
 3. T-05 aggregates all findings (1.5s)
@@ -224,6 +233,7 @@ distributed-task-orchestrator/
 **Request:** "Translate the 5 documents in docs/ to Chinese"
 
 **Task Decomposition:**
+
 ```
 [T-01: intro.md] ─────────────────────→ All independent
 [T-02: getting-started.md] ───────────→ Maximum parallelism
@@ -233,6 +243,7 @@ distributed-task-orchestrator/
 ```
 
 **Execution:**
+
 - All 5 tasks run simultaneously
 - Total time: ~45s (vs ~180s sequential)
 - Parallel efficiency: 4x speedup
@@ -242,6 +253,7 @@ distributed-task-orchestrator/
 **Request:** "Test all API endpoints for response time and correctness"
 
 **Task Decomposition:**
+
 - T-01: Test GET /api/users
 - T-02: Test GET /api/users/:id
 - T-03: Test POST /api/users
@@ -249,6 +261,7 @@ distributed-task-orchestrator/
 - T-05: Test GET /api/orders
 
 **Final Report Includes:**
+
 - Endpoints tested: 5
 - Test cases: 15
 - Pass rate: 93%
@@ -260,6 +273,7 @@ distributed-task-orchestrator/
 **Request:** "Add user authentication with JWT"
 
 **Task Decomposition:**
+
 ```
 [T-01: Design DB Schema] ───→ [T-03: Implement User Model]
 [T-02: Design API Spec] ────→ [T-04: Implement Auth Routes]
@@ -476,12 +490,14 @@ function Invoke-AgentWithRetry {
 
 ### 6. Dependency Types
 
-| Type | Description | Example |
-|------|-------------|---------|
-| Data Dependency | B needs A's output | Analyze → Report |
-| Sequential | B must follow A | Create → Populate |
-| Resource | A and B share resource | Same file writes |
-| None | Completely independent | Different files |
+
+| Type            | Description            | Example           |
+| --------------- | ---------------------- | ----------------- |
+| Data Dependency | B needs A's output     | Analyze → Report  |
+| Sequential      | B must follow A        | Create → Populate |
+| Resource        | A and B share resource | Same file writes  |
+| None            | Completely independent | Different files   |
+
 
 ---
 
@@ -498,11 +514,13 @@ function Invoke-AgentWithRetry {
 ## Installation
 
 This skill is located at:
+
 ```
-C:\Users\28651\.claude\skills\distributed-task-orchestrator\SKILL.md
+C:\Users\{User}\.claude\skills\distributed-task-orchestrator\SKILL.md
 ```
 
 The skill is automatically available when:
+
 - User needs to orchestrate complex multi-step tasks
 - User mentions parallel execution or sub-agents
 - User needs to launch Claude CLI for subtasks
