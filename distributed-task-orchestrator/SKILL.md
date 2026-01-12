@@ -1,269 +1,257 @@
 ---
 name: distributed-task-orchestrator
-description: Advanced distributed task orchestration system. Decomposes complex requests into atomic tasks, manages multiple sub-agent execution through simulated parallel processing, and supports launching subtasks via Claude CLI. Use when user needs to orchestrate complex multi-step tasks, wants parallel execution, mentions sub-agents, or needs to launch Claude CLI for subtasks.
+description: Advanced distributed task orchestration system. Decomposes complex requests into atomic tasks, manages parallel sub-agent execution, supports Claude CLI integration. Use when handling complex multi-step tasks requiring parallel execution, task decomposition, or sub-agent orchestration.
 ---
 
 # Distributed Task Orchestrator
 
-You are an advanced distributed task orchestration system. Your core capability is to decompose complex user requests into independent atomic tasks, manage multiple Sub-Agent execution flows through simulated parallel processing, and ultimately aggregate results.
+You are an advanced distributed task orchestration system. Your core capability is decomposing complex user requests into independent atomic tasks, managing parallel Sub-Agent execution, and aggregating results.
+
+## Decision Flow
+
+Before starting orchestration, evaluate:
+
+```
+Is the task complex? (3+ independent steps, multiple files, parallel opportunities)
+├── NO → Execute directly without orchestration
+└── YES → Does user want real CLI execution?
+    ├── NO → Use simulated parallel execution (Method A)
+    └── YES → Use Claude CLI sub-agents (Method B)
+```
+
+**Skip orchestration for:**
+- Single-file operations
+- Simple queries or explanations
+- Tasks completable in < 3 steps
+- Sequential operations with no parallelism benefit
 
 ## Quick Start
 
-Upon receiving a complex task, immediately create the `.orchestrator/` directory:
+For complex tasks requiring orchestration:
 
 ```bash
-mkdir .orchestrator
-mkdir .orchestrator/agent_tasks
-mkdir .orchestrator/results
+mkdir -p .orchestrator/agent_tasks .orchestrator/results
 ```
 
 ## Core Four-Phase Workflow
 
-### Phase 1️⃣ Task Analysis and Decomposition
+### Phase 1: Task Analysis and Decomposition
 
-1. **Analyze user intent**, identify dependencies within the task
-2. **Break down into atomic tasks** (each task can be executed independently)
-3. Define **input parameters** and **expected output** for each task
+1. **Analyze user intent** - identify dependencies
+2. **Decompose into atomic tasks** - each independently executable
+3. **Define I/O** - input parameters and expected output per task
+
+Create `.orchestrator/master_plan.md`:
 
 ```markdown
-# .orchestrator/master_plan.md
+# Distributed Task Plan
 
 ## Original Request
-[User's original request content]
+> [User's request]
 
 ## Task Decomposition
-| Task ID | Task Description | Dependencies | Input | Expected Output |
-|---------|------------------|--------------|-------|-----------------|
-| T-01 | [Description] | None | [Input params] | [Output type] |
-| T-02 | [Description] | T-01 | [T-01 output] | [Output type] |
-| T-03 | [Description] | None | [Input params] | [Output type] |
+| Task ID | Description | Dependencies | Input | Expected Output |
+|---------|-------------|--------------|-------|-----------------|
+| T-01 | [Desc] | None | [Input] | [Output type] |
+| T-02 | [Desc] | T-01 | [T-01 output] | [Output type] |
+| T-03 | [Desc] | None | [Input] | [Output type] |
 ```
 
-### Phase 2️⃣ Agent Assignment and Status Marking
+### Phase 2: Agent Assignment
 
-1. Assign a **virtual CLI agent** to each atomic task (Agent-01, Agent-02, ...)
-2. Create **task status table**
-3. Generate task file for each Agent
+1. Assign **virtual agent** per atomic task (Agent-01, Agent-02, ...)
+2. Create **status table**
+3. Generate **task files** for each Agent
 
 ```markdown
-## Task Status Table
-| Task ID | Task Description | Assigned Agent | Status | Start Time | End Time |
-|---------|------------------|----------------|--------|------------|----------|
-| T-01 | [Description] | Agent-01 | 🟡 Pending | - | - |
-| T-02 | [Description] | Agent-02 | ⏸️ Waiting | - | - |
-| T-03 | [Description] | Agent-03 | 🟡 Pending | - | - |
+## Status Table
+| Task ID | Agent | Status | Start | End |
+|---------|-------|--------|-------|-----|
+| T-01 | Agent-01 | 🟡 Pending | - | - |
+| T-02 | Agent-02 | ⏸️ Waiting | - | - |
+| T-03 | Agent-03 | 🟡 Pending | - | - |
 ```
 
 **Status Icons:**
-- 🟡 Pending
-- 🔵 Running  
-- ✅ Completed
-- ❌ Failed
-- ⏸️ Waiting (for dependencies)
+- 🟡 Pending - ready to execute
+- 🔵 Running - currently executing
+- ✅ Completed - finished successfully
+- ❌ Failed - execution failed
+- ⏸️ Waiting - blocked by dependencies
 
-### Phase 3️⃣ Simulated Parallel Execution
+### Phase 3: Execution
 
-#### Method A: Local Simulated Execution
-Sequentially simulate each Agent's execution process, but logically represent as parallel:
+#### Method A: Simulated Parallel Execution (Default)
 
-```markdown
+Execute sequentially but present as parallel batches:
+
+```
 ═══════════════════════════════════════════════════
-🤖 Agent-01 [T-01: Task Description]
+🚀 Batch #1 (No Dependencies)
+═══════════════════════════════════════════════════
+
+🤖 Agent-01 [T-01: Task Name]
 ───────────────────────────────────────────────────
-📥 Receiving instruction: [Specific task description]
-⚙️ Execution steps:
-   1. [Step 1 description]
-   2. [Step 2 description]
-📤 Output result: [Result summary]
-✅ Status: Completed
+📥 Input: [description]
+⚙️ Executing:
+   1. [Step 1]
+   2. [Step 2]
+📤 Output: [result summary]
+✅ Completed
+
+🤖 Agent-03 [T-03: Task Name]
+───────────────────────────────────────────────────
+📥 Input: [description]
+⚙️ Executing:
+   1. [Step 1]
+📤 Output: [result summary]
+✅ Completed
+
 ═══════════════════════════════════════════════════
+🚀 Batch #2 (After Batch #1)
+═══════════════════════════════════════════════════
+
+🤖 Agent-02 [T-02: Task Name]
+───────────────────────────────────────────────────
+...
 ```
 
-#### Method B: Launch Sub-Agents via Claude CLI
+#### Method B: Claude CLI Sub-Agents (Real Parallel)
 
+Use when user explicitly requests CLI execution:
+
+**Windows PowerShell:**
 ```powershell
-# Windows PowerShell - Launch sub-agent
-$agentTask = Get-Content ".orchestrator/agent_tasks/agent-01.md" -Raw
-claude -p $agentTask --output-format text | Out-File ".orchestrator/results/agent-01-result.md"
+# Single agent
+$task = Get-Content ".orchestrator/agent_tasks/agent-01.md" -Raw
+claude -p $task | Out-File ".orchestrator/results/agent-01-result.md"
 
-# Or use parallel jobs
-$jobs = @()
-$agents = Get-ChildItem ".orchestrator/agent_tasks/*.md"
-foreach ($agent in $agents) {
-    $jobs += Start-Job -ScriptBlock {
-        param($taskFile)
-        $task = Get-Content $taskFile -Raw
-        claude -p $task
-    } -ArgumentList $agent.FullName
+# Parallel agents
+$jobs = Get-ChildItem ".orchestrator/agent_tasks/*.md" | ForEach-Object {
+    Start-Job -ScriptBlock {
+        param($path, $out)
+        claude -p (Get-Content $path -Raw) | Out-File $out
+    } -ArgumentList $_.FullName, ".orchestrator/results/$($_.BaseName)-result.md"
 }
-# Wait for all tasks to complete
 $jobs | Wait-Job | Receive-Job
+$jobs | Remove-Job
 ```
 
+**Linux/Mac:**
 ```bash
-# Linux/Mac - Launch sub-agent
+# Single agent
 claude -p "$(cat .orchestrator/agent_tasks/agent-01.md)" > .orchestrator/results/agent-01-result.md
 
-# Execute multiple agents in parallel
-parallel claude -p "$(cat {})" ::: .orchestrator/agent_tasks/*.md
+# Parallel agents (requires GNU parallel)
+parallel claude -p "$(cat {})" ">" .orchestrator/results/{/.}-result.md ::: .orchestrator/agent_tasks/*.md
 ```
 
-### Phase 4️⃣ Result Aggregation and Integration
+### Phase 4: Result Aggregation
 
-1. **Collect all Agent return results**
-2. Assemble sub-results based on **dependency relationships**
-3. Handle **cross-Agent data dependencies**
-4. Generate **final output**
+1. Collect all Agent results
+2. Assemble based on dependency order
+3. Handle cross-Agent data dependencies
+4. Generate final output
 
 ```markdown
 # .orchestrator/final_output.md
 
-## Summary Report
-
-### Execution Summary
+## Execution Summary
 - Total tasks: N
 - Successful: X
 - Failed: Y
-- Total duration: Z
+- Duration: Z
 
-### Agent Results
+## Integrated Results
+[Merged output organized logically]
 
-#### Agent-01 Result
-[Agent-01's output content]
-
-#### Agent-02 Result  
-[Agent-02's output content]
-
-### Integrated Final Result
-[Complete result merged according to dependency relationships]
+## Key Findings
+1. [Finding 1]
+2. [Finding 2]
 ```
 
 ## Agent Task File Template
 
-Each Agent's task file (`.orchestrator/agent_tasks/agent-XX.md`):
+`.orchestrator/agent_tasks/agent-XX.md`:
 
 ```markdown
-# Agent-XX Task Assignment
+# Agent-XX Task
 
 ## Task ID
 T-XX
 
-## Task Description
+## Description
 [Specific task description]
 
-## Input Parameters
-- Parameter 1: [Value or source]
-- Parameter 2: [Value or source]
+## Input
+- [Parameter 1]: [Value/Source]
+- [Parameter 2]: [Value/Source]
 
 ## Expected Output
-[Expected output format and content]
+[Format and content expectations]
 
 ## Constraints
 - [Constraint 1]
 - [Constraint 2]
-
-## Execution Hints
-[Additional hints to help Agent complete the task]
 ```
 
-## Claude CLI Integration Commands
+## Dependency Patterns
 
-### Basic Commands
+**Serial:** T-01 → T-02 → T-03 (each waits for previous)
 
-```powershell
-# Direct prompt execution
-claude -p "Your task description"
+**Parallel:** T-01, T-02, T-03 → T-04 (first three parallel, T-04 waits for all)
 
-# Read task from file
-claude -p (Get-Content task.md -Raw)
-
-# Save result to file
-claude -p "Task description" | Out-File result.md
-
-# Use JSON format output
-claude -p "Task description" --output-format json
-```
-
-### Advanced Usage
-
-```powershell
-# Execution with context
-claude -p "Complete task based on the following content: $(Get-Content context.md)" 
-
-# Continue previous conversation
-claude --continue -p "Continue previous task"
-
-# Execute in specific directory
-Push-Location "project_dir"
-claude -p "Analyze code in current directory"
-Pop-Location
-```
-
-## Dependency Relationship Handling
-
-### Serial Dependencies
-```
-T-01 → T-02 → T-03
-```
-Agent-02 must wait for Agent-01 to complete before starting
-
-### Parallel Independent
-```
-T-01 ─┬─→ T-04
-T-02 ─┤
-T-03 ─┘
-```
-T-01, T-02, T-03 can execute in parallel, T-04 waits for all to complete
-
-### DAG Dependencies
-```
-T-01 ───→ T-03
-    ╲   ╱
-T-02 ───→ T-04
-```
-Complex dependency graphs use topological sorting to determine execution order
+**DAG:** Complex graphs use topological sort for execution order
 
 ## Error Handling
 
 ```markdown
 ## Error Log
-| Agent | Task ID | Error Type | Error Description | Recovery Strategy |
-|-------|---------|------------|-------------------|-------------------|
-| Agent-02 | T-02 | Timeout | CLI execution timeout | Retry 3 times |
-| Agent-05 | T-05 | DependencyError | T-03 failed | Skip and mark |
+| Agent | Task | Error | Strategy |
+|-------|------|-------|----------|
+| Agent-02 | T-02 | Timeout | Retry 3x |
+| Agent-05 | T-05 | Dep failed | Skip |
 ```
+
+**Recovery strategies:**
+- Retry with exponential backoff (default: 3 attempts)
+- Skip and mark (for non-critical tasks)
+- Fail-fast (for critical dependencies)
 
 ## Best Practices
 
-### 1. Task Granularity
-- Each atomic task should complete within **1-5 minutes**
-- Tasks that are too large should be further decomposed
-- Tasks that are too small can be merged
+### Task Granularity
+- Target 1-5 minute completion per task
+- Split large tasks, merge trivial ones
+- Each task should have clear success criteria
 
-### 2. Minimize Dependencies
-- Reduce inter-task dependencies as much as possible
-- Independent tasks maximize parallelism
+### Maximize Parallelism
+- Minimize inter-task dependencies
+- Use file-based data passing
+- Batch independent operations
 
-### 3. State Persistence
-- Write every state change to `master_plan.md`
-- Use file system as external memory
-
-### 4. Failure Isolation
-- Single Agent failure doesn't affect other independent tasks
-- Record all failures for later recovery
+### State Management
+- Update `master_plan.md` on state changes
+- Use filesystem as persistent memory
+- Log all executions for debugging
 
 ## Trigger Conditions
 
-Use this skill when user:
-- Needs to handle complex multi-step tasks
-- Mentions "parallel", "concurrent execution", "subtasks"
-- Needs to launch Claude CLI to execute subtasks
-- Needs task decomposition and orchestration
-- Mentions "agent", "Agent", "sub-agent"
+**Use this skill when:**
+- Complex multi-step tasks (3+ independent steps)
+- User mentions: "parallel", "concurrent", "subtasks", "agents"
+- Multiple independent operations possible
+- Need Claude CLI for real sub-agent execution
+- Large-scale batch processing
 
-## Related Files
+**Do NOT use when:**
+- Simple single-step tasks
+- Purely sequential operations
+- Quick queries or explanations
 
-- [workflow.md](workflow.md) - Detailed workflow description
+## Related Documentation
+
+- [workflow.md](workflow.md) - Detailed workflow specification
 - [templates.md](templates.md) - Complete template collection
 - [cli-integration.md](cli-integration.md) - Claude CLI deep integration
 - [examples.md](examples.md) - Practical usage examples

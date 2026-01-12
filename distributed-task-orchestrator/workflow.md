@@ -1,6 +1,6 @@
 # Workflow: Detailed Distributed Task Orchestration Workflow
 
-## Complete Execution Flow Diagram
+## Complete Execution Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -15,7 +15,7 @@
 │ │ 1.3 Break down into atomic tasks                           │   │
 │ │ 1.4 Define Input/Output for each task                      │   │
 │ └───────────────────────────────────────────────────────────┘   │
-│ 📄 Output: .orchestrator/master_plan.md                          │
+│ Output: .orchestrator/master_plan.md                             │
 └─────────────────────────────────┬───────────────────────────────┘
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -26,7 +26,7 @@
 │ │ 2.3 Generate Agent task files                              │   │
 │ │ 2.4 Initialize status as "Pending"                         │   │
 │ └───────────────────────────────────────────────────────────┘   │
-│ 📄 Output: .orchestrator/agent_tasks/agent-XX.md                 │
+│ Output: .orchestrator/agent_tasks/agent-XX.md                    │
 └─────────────────────────────────┬───────────────────────────────┘
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -38,7 +38,7 @@
 │ │ 3.4 Execute subsequent tasks after dependencies complete   │   │
 │ │ 3.5 Record execution logs                                  │   │
 │ └───────────────────────────────────────────────────────────┘   │
-│ 📄 Output: .orchestrator/results/agent-XX-result.md              │
+│ Output: .orchestrator/results/agent-XX-result.md                 │
 └─────────────────────────────────┬───────────────────────────────┘
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -49,11 +49,11 @@
 │ │ 4.3 Merge results according to dependency order            │   │
 │ │ 4.4 Generate final output                                  │   │
 │ └───────────────────────────────────────────────────────────┘   │
-│ 📄 Output: .orchestrator/final_output.md                         │
+│ Output: .orchestrator/final_output.md                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Phase 1: Task Analysis and Decomposition (Detailed)
+## Phase 1: Task Analysis and Decomposition
 
 ### 1.1 Parse User Intent
 
@@ -72,7 +72,7 @@
 
 ### Implicit Requirements
 - [ ] What does the user expect but didn't explicitly state?
-- [ ] Industry best practices?
+- [ ] Industry best practices to follow?
 ```
 
 ### 1.2 Dependency Analysis
@@ -83,8 +83,8 @@
 |------|-------------|---------|
 | Data Dependency | B needs A's output as input | Analyze code → Generate report |
 | Sequential Dependency | B must execute after A | Create file → Write content |
-| Resource Dependency | A and B compete for same resource | Write to same file simultaneously |
-| No Dependency | Completely independent | Process different files separately |
+| Resource Dependency | A and B compete for same resource | Write to same file |
+| No Dependency | Completely independent | Process different files |
 
 **Building Dependency Graph:**
 
@@ -94,15 +94,15 @@ Example: Code Review Task
           ┌─→ [T-02: Check code style] ─┐
 [T-01] ──┤                              ├──→ [T-05: Generate report]
 Read code ├─→ [T-03: Security scan] ────┤
-          └─→ [T-04: Performance analysis] ─┘
+          └─→ [T-04: Performance check] ─┘
 ```
 
 ### 1.3 Atomic Task Definition
 
 **Atomic Task Criteria:**
 - ✅ Single Responsibility: Does only one thing
-- ✅ Independently Executable: Doesn't depend on runtime context
-- ✅ Verifiable Output: Has clear success/failure criteria
+- ✅ Independently Executable: No runtime context dependency
+- ✅ Verifiable Output: Clear success/failure criteria
 - ✅ Retriable: Can be safely retried after failure
 
 ```markdown
@@ -121,7 +121,7 @@ Read code ├─→ [T-03: Security scan] ────┤
 - [x] Safe to retry
 ```
 
-## Phase 2: Agent Assignment (Detailed)
+## Phase 2: Agent Assignment
 
 ### 2.1 Agent ID Assignment Rules
 
@@ -130,16 +130,16 @@ Agent-{sequence}
 Sequence: 01, 02, 03, ... (two-digit zero-padded)
 ```
 
-### 2.2 Complete Task Status Table Fields
+### 2.2 Complete Task Status Table
 
 ```markdown
-| Task ID | Task Description | Agent | Status | Priority | Deps | Start | End | Retries |
-|---------|------------------|-------|--------|----------|------|-------|-----|---------|
+| Task ID | Description | Agent | Status | Priority | Deps | Start | End | Retries |
+|---------|-------------|-------|--------|----------|------|-------|-----|---------|
 | T-01 | Read code | Agent-01 | ✅ | P0 | None | 10:00 | 10:01 | 0 |
 | T-02 | Style check | Agent-02 | 🔵 | P1 | T-01 | 10:01 | - | 0 |
 | T-03 | Security scan | Agent-03 | 🔵 | P1 | T-01 | 10:01 | - | 0 |
-| T-04 | Performance analysis | Agent-04 | 🟡 | P1 | T-01 | - | - | 0 |
-| T-05 | Generate report | Agent-05 | ⏸️ | P2 | T-02,T-03,T-04 | - | - | 0 |
+| T-04 | Perf analysis | Agent-04 | 🟡 | P1 | T-01 | - | - | 0 |
+| T-05 | Gen report | Agent-05 | ⏸️ | P2 | T-02,T-03,T-04 | - | - | 0 |
 ```
 
 ### 2.3 Priority Definitions
@@ -151,7 +151,7 @@ Sequence: 01, 02, 03, ... (two-digit zero-padded)
 | P2 | Normal | Standard priority |
 | P3 | Low Priority | Can be delayed |
 
-## Phase 3: Parallel Execution (Detailed)
+## Phase 3: Parallel Execution
 
 ### 3.1 Execution Scheduling Algorithm
 
@@ -220,7 +220,7 @@ def schedule_tasks(tasks, dependencies):
 
 ### 3.3 CLI Execution Mode
 
-**Windows PowerShell Parallel Execution:**
+**Windows PowerShell:**
 
 ```powershell
 # Method 1: Using Jobs
@@ -235,7 +235,7 @@ $jobs = foreach ($file in $taskFiles) {
     } -ArgumentList $file.FullName, ".orchestrator/results/$agentId-result.md"
 }
 
-# Wait for all to complete
+# Wait for completion
 $jobs | Wait-Job
 
 # Collect results
@@ -285,7 +285,7 @@ $pool.Close()
 $pool.Dispose()
 ```
 
-## Phase 4: Result Aggregation (Detailed)
+## Phase 4: Result Aggregation
 
 ### 4.1 Result Collection Check
 
@@ -333,12 +333,12 @@ $pool.Dispose()
 [Merge Agent-03 detailed content]
 ```
 
-**Strategy C: Intelligent Merge (Requires AI Processing)**
+**Strategy C: AI-Powered Merge**
 ```powershell
 # Use Claude to merge multiple results
 $results = Get-Content ".orchestrator/results/*.md" -Raw
 $mergePrompt = @"
-Please merge the following multiple subtask results into a complete report:
+Merge the following subtask results into a complete report:
 
 $results
 
