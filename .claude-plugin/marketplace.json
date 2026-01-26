@@ -1,0 +1,23 @@
+{
+  "name": "ai-agent-toolkit",
+  "owner": {
+    "name": "AI Agent Toolkit",
+    "email": ""
+  },
+  "metadata": {
+    "description": "A collection of powerful agent skills for task automation and orchestration",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "agent-skills",
+      "description": "Collection of agent skills including distributed task orchestration and scheduled task management",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/distributed-task-orchestrator",
+        "./skills/scheduled-task"
+      ]
+    }
+  ]
+}

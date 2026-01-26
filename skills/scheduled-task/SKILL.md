@@ -1,11 +1,15 @@
 ---
 name: scheduled-task
-description: Create and manage scheduled tasks that execute Claude CLI at specified times. Use when user mentions "定时", "scheduled", "timer", "cron", "每天", "每小时", "定期", "remind", "提醒", or wants to run automated tasks periodically.
+description: Create and manage scheduled tasks that execute Claude CLI at specified times. Use when user mentions "定时", "scheduled", "timer", "cron", "每天", "每小时", "定期", "remind", "提醒", or wants to run automated tasks periodically. Supports cron expressions, interval-based, and one-time scheduling.
+license: Apache-2.0
+metadata:
+  author: ai-agent-toolkit
+  version: "1.0.0"
 ---
 
-# Scheduled Task Skill
+# Scheduled Task
 
-Create, manage, and execute scheduled tasks using Claude CLI. Supports cron expressions, interval-based, and one-time scheduling.
+Create, manage, and execute scheduled tasks using Claude CLI.
 
 ## Quick Start
 
@@ -13,18 +17,9 @@ Create, manage, and execute scheduled tasks using Claude CLI. Supports cron expr
 User Request → Parse Schedule → Generate Task MD → Register → Scheduler Executes → Notify
 ```
 
-## Core Workflow
+## Create a Task
 
-### 1. Create a Task
-
-When user requests a scheduled task:
-
-1. Parse the schedule type:
-   - **cron**: `0 9 * * *` (daily at 9am)
-   - **interval**: `30m`, `2h`, `1d` (every 30min/2hours/1day)
-   - **once**: `2026-01-27 15:00` (one-time execution)
-
-2. Generate task file and register:
+Parse the schedule type and generate task file:
 
 ```bash
 python scripts/create_task.py \
@@ -34,7 +29,24 @@ python scripts/create_task.py \
   --prompt "Review code quality in src/ directory"
 ```
 
-### 2. Manage Tasks
+### Schedule Types
+
+| Type | Format | Example | Description |
+|------|--------|---------|-------------|
+| Cron | `cron:expr` | `cron:0 9 * * *` | Daily at 9am |
+| Interval | `interval:Xu` | `interval:30m` | Every 30 minutes |
+| Once | `once:datetime` | `once:2026-01-27 15:00` | One-time execution |
+
+### Common Patterns
+
+| Pattern | Schedule |
+|---------|----------|
+| Every day at 9am | `cron:0 9 * * *` |
+| Every hour | `interval:1h` |
+| Every 30 minutes | `interval:30m` |
+| Weekdays at 8am | `cron:0 8 * * 1-5` |
+
+## Manage Tasks
 
 ```bash
 # List all tasks
@@ -50,14 +62,6 @@ python scripts/run_task.py --id task-001
 python scripts/scheduler.py --daemon
 ```
 
-### 3. Scheduler Operation
-
-The scheduler runs in background, checking tasks every minute:
-- Loads `registry.json` for task definitions
-- Executes due tasks via `claude --print`
-- Saves results to `.scheduled-tasks/results/`
-- Sends cross-platform notifications
-
 ## Directory Structure (Runtime)
 
 ```
@@ -69,23 +73,6 @@ The scheduler runs in background, checking tasks every minute:
 │   └── task-001_2026-01-26_09-00.md
 └── logs/
     └── scheduler.log
-```
-
-## Task MD Template
-
-```markdown
-# Task: [Task Name]
-
-## Context
-- **Working Directory:** /path/to/project
-- **Focus Files:** src/**/*.ts
-
-## Instructions
-[User-defined instructions for Claude to execute]
-
-## Output Requirements
-- Format: Markdown report
-- Save to: .scheduled-tasks/results/
 ```
 
 ## Script Reference
@@ -108,41 +95,6 @@ The scheduler runs in background, checking tasks every minute:
 | `--once` | Check and run due tasks once, then exit |
 | `--interval` | Check interval in seconds (default: 60) |
 
-### list_tasks.py
-
-| Parameter | Description |
-|-----------|-------------|
-| `--all` | Show all tasks including disabled |
-| `--json` | Output as JSON |
-
-### cancel_task.py
-
-| Parameter | Description |
-|-----------|-------------|
-| `--id` | Task ID to cancel |
-| `--all` | Cancel all tasks |
-
-### run_task.py
-
-| Parameter | Description |
-|-----------|-------------|
-| `--id` | Task ID to run |
-| `--dry-run` | Show what would be executed |
-
-## Schedule Patterns
-
-See [schedule-patterns.md](references/schedule-patterns.md) for common patterns.
-
-### Quick Reference
-
-| Pattern | Type | Example |
-|---------|------|---------|
-| Every day at 9am | cron | `cron:0 9 * * *` |
-| Every hour | interval | `interval:1h` |
-| Every 30 minutes | interval | `interval:30m` |
-| Tomorrow at 3pm | once | `once:2026-01-27 15:00` |
-| Weekdays at 8am | cron | `cron:0 8 * * 1-5` |
-
 ## Cross-Platform Support
 
 - **Windows**: Native toast notifications via win10toast
@@ -150,8 +102,6 @@ See [schedule-patterns.md](references/schedule-patterns.md) for common patterns.
 - **Linux**: notify-send (libnotify)
 
 ## Dependencies
-
-Install before first use:
 
 ```bash
 pip install -r scripts/requirements.txt
@@ -165,15 +115,6 @@ pip install -r scripts/requirements.txt
 | Task timeout (5min default) | Kill process, mark failed, retry later |
 | Invalid cron expression | Reject at creation time |
 
-## Trigger Conditions
+## Reference Files
 
-**USE when user says:**
-- "定时执行...", "每天早上..."
-- "Create a scheduled task"
-- "Remind me to...", "提醒我..."
-- "Run this every hour"
-- "Set up a cron job"
-
-**SKIP when:**
-- One-time immediate execution
-- No time/schedule mentioned
+- [schedule-patterns.md](references/schedule-patterns.md) - Complete schedule pattern reference

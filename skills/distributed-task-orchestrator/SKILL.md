@@ -1,11 +1,15 @@
 ---
 name: distributed-task-orchestrator
-description: Decompose complex tasks into parallel sub-agents. Use for multi-step operations, batch processing, or when user mentions "parallel", "agents", or "orchestrate".
+description: Decompose complex tasks into parallel sub-agents. Use for multi-step operations, batch processing, or when user mentions "parallel", "agents", "orchestrate", "subtasks", or "concurrent". Supports simulated parallel execution and real Claude CLI sub-agent launching.
+license: Apache-2.0
+metadata:
+  author: ai-agent-toolkit
+  version: "1.0.0"
 ---
 
 # Distributed Task Orchestrator
 
-You are an advanced distributed task orchestration system. Decompose complex requests into independent atomic tasks, manage parallel execution, and aggregate results.
+Decompose complex requests into independent atomic tasks, manage parallel execution, and aggregate results.
 
 ## Quick Decision
 
@@ -67,40 +71,11 @@ Create `.orchestrator/agent_tasks/agent-XX.md` for each task:
    ✅ Completed
 ```
 
-**CLI Mode (When Requested):**
-
-```powershell
-# Windows - Parallel execution
-$jobs = Get-ChildItem ".orchestrator/agent_tasks/*.md" | ForEach-Object {
-    Start-Job -ScriptBlock {
-        param($path, $out)
-        claude --print (Get-Content $path -Raw) | Out-File $out
-    } -ArgumentList $_.FullName, ".orchestrator/results/$($_.BaseName)-result.md"
-}
-$jobs | Wait-Job | Receive-Job; $jobs | Remove-Job
-```
-
-```bash
-# Linux/Mac - Using GNU parallel
-parallel claude --print "$(cat {})" ">" .orchestrator/results/{/.}-result.md ::: .orchestrator/agent_tasks/*.md
-```
+**CLI Mode (When Requested):** See [cli-integration.md](references/cli-integration.md)
 
 ### Phase 4: Aggregate
 
 Collect results → Merge by dependency order → Generate `.orchestrator/final_output.md`
-
-```markdown
-# Execution Report
-- Tasks: N total, X succeeded, Y failed
-- Duration: Zs
-
-## Results
-[Integrated findings organized logically]
-
-## Key Takeaways
-1. [Finding 1]
-2. [Finding 2]
-```
 
 ## Dependency Patterns
 
@@ -122,22 +97,9 @@ Collect results → Merge by dependency order → Generate `.orchestrator/final_
 2. **Parallelism:** Minimize dependencies; use file-based data passing
 3. **State:** Update `master_plan.md` on every status change
 
-## Trigger Conditions
+## Reference Files
 
-**USE when:**
-- 3+ independent steps possible
-- User mentions: "parallel", "concurrent", "subtasks", "agents"
-- Batch processing needed
-- Claude CLI sub-agents requested
-
-**SKIP when:**
-- Single-step task
-- Quick query/explanation
-- Purely sequential with no parallel benefit
-
-## Related Files
-
-- [workflow.md](workflow.md) - Detailed workflow spec
-- [templates.md](templates.md) - Complete templates
-- [cli-integration.md](cli-integration.md) - CLI deep dive
-- [examples.md](examples.md) - Practical examples
+- [workflow.md](references/workflow.md) - Detailed workflow specification
+- [templates.md](references/templates.md) - Complete templates for all files
+- [cli-integration.md](references/cli-integration.md) - Claude CLI integration guide
+- [examples.md](references/examples.md) - Practical examples
