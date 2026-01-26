@@ -1,0 +1,8 @@
+# Scheduled Task Skill Dependencies
+# Cross-platform scheduling and notifications
+
+croniter>=1.3.0          # Cron expression parsing
+python-dateutil>=2.8.0   # Date/time utilities
+
+# Platform-specific notifications (optional, graceful fallback)
+win10toast>=0.9; sys_platform == 'win32'
